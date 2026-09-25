@@ -166,22 +166,31 @@ const [supply,setSupply]=useState('1000000000');
       return;
     }
 
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: new PublicKey(provider.publicKey.toString()),
-        toPubkey: new PublicKey(provider.publicKey.toString()),
-        lamports: 0,
-      })
-    );
+    const mintKeypair = Keypair.generate();
 
-    const { blockhash } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = new PublicKey(provider.publicKey.toString());
+const createInstruction = await PUMP_SDK.createV2Instruction({
+  mint: mintKeypair.publicKey,
+  name: name.trim(),
+  symbol: ticker.replace('$', '').trim(),
+  uri: image.trim(),
+  creator: new PublicKey(provider.publicKey.toString()),
+  user: new PublicKey(provider.publicKey.toString()),
+  mayhemMode: false,
+  holderReward: false,
+});
 
-    const signed = await provider.signTransaction(transaction);
-    const signature = await connection.sendRawTransaction(signed.serialize());
+const transaction = new Transaction().add(createInstruction);
 
-    onNotify(`Transaction sent: ${signature.slice(0, 8)}...`);
+const { blockhash } = await connection.getLatestBlockhash();
+transaction.recentBlockhash = blockhash;
+transaction.feePayer = new PublicKey(provider.publicKey.toString());
+
+transaction.partialSign(mintKeypair);
+
+const signed = await provider.signTransaction(transaction);
+const signature = await connection.sendRawTransaction(signed.serialize());
+
+onNotify(`Launch submitted: ${signature.slice(0, 8)}...`);
   } catch {
     onNotify('Transaction cancelled or failed');
   }
