@@ -23,6 +23,14 @@ export default function Home() {
   const [active, setActive] = useState('Dashboard');
   const [connected, setConnected] = useState(false);
 const [walletAddress, setWalletAddress] = useState('');
+  useEffect(() => {
+  const provider = (window as any).phantom?.solana;
+
+  if (provider?.isConnected && provider.publicKey) {
+    setConnected(true);
+    setWalletAddress(provider.publicKey.toString());
+  }
+}, []);
   const [running, setRunning] = useState(true);
   const [showLaunch, setShowLaunch] = useState(false);
   const [search, setSearch] = useState('');
