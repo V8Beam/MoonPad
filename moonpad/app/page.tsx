@@ -102,7 +102,7 @@ const [walletAddress, setWalletAddress] = useState('');
         <footer>MoonPad prototype · No real transactions are executed in this build.</footer>
       </section>
 
-      {showLaunch && <LaunchModal onClose={() => setShowLaunch(false)} onNotify={notify}/>} 
+      {showLaunch && <LaunchModal onClose={() => setShowLaunch(false)} onNotify={notify} walletAddress={walletAddress}/>} 
       {toast && <div className="toast"><Sparkles size={15}/>{toast}</div>}
     </main>
   );
@@ -122,7 +122,7 @@ function ActivityLog({onOpen}:{onOpen?:()=>void}) {
 
 function PageShell({title,subtitle,children}:{title:string,subtitle:string,children:React.ReactNode}) { return <div className="page-shell"><div className="page-intro"><span className="pill"><TrendingUp size={13}/> MOONPAD WORKSPACE</span><h2>{title}</h2><p>{subtitle}</p></div>{children}</div> }
 
-function LaunchModal({onClose,onNotify}:{onClose:()=>void,onNotify:(s:string)=>void}) {
+function LaunchModal({onClose,onNotify,walletAddress}:{onClose:()=>void,onNotify:(s:string)=>void,walletAddress:string}) {
  const [name,setName]=useState('');
 const [ticker,setTicker]=useState('');
 const [description,setDescription]=useState('');
