@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Activity, Bot, ChevronRight, CircleDollarSign, Copy, Gauge, LayoutDashboard,
   Pause, Play, Rocket, Search, Settings, Sparkles, TrendingUp, Wallet, Zap, X
@@ -53,7 +53,22 @@ export default function Home() {
       <section className="content">
         <header className="topbar">
           <div><div className="eyebrow">{active.toUpperCase()}</div><h1>{pageTitle}</h1></div>
-          <div className="top-actions"><div className="search"><Search size={15}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tokens..."/></div><button className={connected ? 'wallet connected' : 'wallet'} onClick={() => { setConnected(!connected); notify(connected ? 'Wallet disconnected' : 'Wallet connected — demo wallet'); }}><Wallet size={17}/>{connected ? '7xK...9Qm' : 'Connect Wallet'}</button></div>
+          <div className="top-actions"><div className="search"><Search size={15}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tokens..."/></div><button className={connected ? 'wallet connected' : 'wallet'} onClick={async () => {
+  const provider = (window as any).phantom?.solana;
+
+  if (!provider) {
+    notify('Phantom wallet not found');
+    return;
+  }
+
+  try {
+    const response = await provider.connect();
+    setConnected(true);
+    notify(`Wallet connected: ${response.publicKey.toString().slice(0, 4)}...`);
+  } catch {
+    notify('Wallet connection cancelled');
+  }
+}}><Wallet size={17}/>{connected ? '7xK...9Qm' : 'Connect Wallet'}</button></div>
         </header>
 
         {active === 'Dashboard' && <>
