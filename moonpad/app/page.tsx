@@ -147,7 +147,7 @@ const [supply,setSupply]=useState('1000000000');
     onNotify('Launch configuration ready — no transaction was sent');
   }}
 >
-  <Rocket size={16}/> Prepare Launch
+  <Rocket size={16}/> Review Launch
 </button></div><p className="note">Prototype mode: this previews the launch flow only.</p></div></div>
 }
 
