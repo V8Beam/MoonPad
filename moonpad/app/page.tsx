@@ -123,6 +123,11 @@ function ActivityLog({onOpen}:{onOpen?:()=>void}) {
 function PageShell({title,subtitle,children}:{title:string,subtitle:string,children:React.ReactNode}) { return <div className="page-shell"><div className="page-intro"><span className="pill"><TrendingUp size={13}/> MOONPAD WORKSPACE</span><h2>{title}</h2><p>{subtitle}</p></div>{children}</div> }
 
 function LaunchModal({onClose,onNotify}:{onClose:()=>void,onNotify:(s:string)=>void}) {
- const [name,setName]=useState(''); const [ticker,setTicker]=useState(''); const [description,setDescription]=useState('');
- return <div className="modal-backdrop" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">TOKEN LAUNCHER</span><h3>Create a token</h3></div><button className="close" onClick={onClose}><X size={20}/></button></div><label>Token name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Moon Token"/></label><label>Ticker<input value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} placeholder="$MOON" maxLength={10}/></label><label>Description<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Tell people what your token is about..."/></label><div className="modal-preview"><span>Preview</span><b>{name || 'Moon Token'}</b><small>{ticker || '$MOON'} · {description || 'Your token description'}</small></div><div className="modal-row"><button className="secondary" onClick={onClose}>Cancel</button><button className="primary" onClick={()=>{onClose();onNotify('Launch preview created — no transaction was sent')}}><Rocket size={16}/> Preview Launch</button></div><p className="note">Prototype mode: this previews the launch flow only.</p></div></div>
-}
+ const [name,setName]=useState('');
+const [ticker,setTicker]=useState('');
+const [description,setDescription]=useState('');
+const [image,setImage]=useState('');
+const [supply,setSupply]=useState('1000000000');
+ return <div className="modal-backdrop" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">TOKEN LAUNCHER</span><h3>Create a token</h3></div><button className="close" onClick={onClose}><X size={20}/></button></div><label>Token name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Moon Token"/></label><label>Ticker<input value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} placeholder="$MOON" maxLength={10}/></label><label>Description<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Tell people what your token is about..."/></label>
+   <label>Token image URL<input value={image} onChange={e=>setImage(e.target.value)} placeholder="https://..."/></label>
+<label>Total supply<input value={supply} onChange={e=>setSupply(e.target.value)} inputMode="numeric" /></label>
