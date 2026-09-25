@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
   Activity, Bot, ChevronRight, CircleDollarSign, Copy, Gauge, LayoutDashboard,
   Pause, Play, Rocket, Search, Settings, Sparkles, TrendingUp, Wallet, Zap, X
@@ -23,6 +24,7 @@ export default function Home() {
   const [active, setActive] = useState('Dashboard');
   const [connected, setConnected] = useState(false);
 const [walletAddress, setWalletAddress] = useState('');
+  const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
   useEffect(() => {
   const provider = (window as any).phantom?.solana;
 
@@ -102,7 +104,7 @@ const [walletAddress, setWalletAddress] = useState('');
         <footer>MoonPad prototype · No real transactions are executed in this build.</footer>
       </section>
 
-      {showLaunch && <LaunchModal onClose={() => setShowLaunch(false)} onNotify={notify} walletAddress={walletAddress}/>} 
+      {showLaunch && <LaunchModal onClose={() => setShowLaunch(false)} onNotify={notify} walletAddress={walletAddress} connection={connection}/>} 
       {toast && <div className="toast"><Sparkles size={15}/>{toast}</div>}
     </main>
   );
@@ -122,7 +124,7 @@ function ActivityLog({onOpen}:{onOpen?:()=>void}) {
 
 function PageShell({title,subtitle,children}:{title:string,subtitle:string,children:React.ReactNode}) { return <div className="page-shell"><div className="page-intro"><span className="pill"><TrendingUp size={13}/> MOONPAD WORKSPACE</span><h2>{title}</h2><p>{subtitle}</p></div>{children}</div> }
 
-function LaunchModal({onClose,onNotify,walletAddress}:{onClose:()=>void,onNotify:(s:string)=>void,walletAddress:string}) {
+function LaunchModal({onClose,onNotify,walletAddress,connection}:{onClose:()=>void,onNotify:(s:string)=>void,walletAddress:string,connection:Connection}) {
  const [name,setName]=useState('');
 const [ticker,setTicker]=useState('');
 const [description,setDescription]=useState('');
@@ -154,7 +156,35 @@ const [supply,setSupply]=useState('1000000000');
 
       <div className="modal-row">
         <button className="secondary" onClick={() => setReview(false)}>Back</button>
-        <button className="primary" onClick={() => onNotify('Phantom approval coming next')}>
+        <button className="primary" onClick={async () => {
+  try {
+    const provider = (window as any).phantom?.solana;
+
+    if (!provider || !provider.publicKey) {
+      onNotify('Connect Phantom first');
+      return;
+    }
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(provider.publicKey.toString()),
+        toPubkey: new PublicKey(provider.publicKey.toString()),
+        lamports: 0,
+      })
+    );
+
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(provider.publicKey.toString());
+
+    const signed = await provider.signTransaction(transaction);
+    const signature = await connection.sendRawTransaction(signed.serialize());
+
+    onNotify(`Transaction sent: ${signature.slice(0, 8)}...`);
+  } catch {
+    onNotify('Transaction cancelled or failed');
+  }
+}}>
           <Rocket size={16}/> Approve & Launch
         </button>
       </div>
