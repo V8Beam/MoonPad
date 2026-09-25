@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, SystemProgram, Keypair } from '@solana/web3.js';
+import { PUMP_SDK } from '@pump-fun/pump-sdk';
 import {
   Activity, Bot, ChevronRight, CircleDollarSign, Copy, Gauge, LayoutDashboard,
   Pause, Play, Rocket, Search, Settings, Sparkles, TrendingUp, Wallet, Zap, X
