@@ -128,7 +128,42 @@ const [ticker,setTicker]=useState('');
 const [description,setDescription]=useState('');
 const [image,setImage]=useState('');
 const [supply,setSupply]=useState('1000000000');
- return <div className="modal-backdrop" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">TOKEN LAUNCHER</span><h3>Create a token</h3></div><button className="close" onClick={onClose}><X size={20}/></button></div><label>Token name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Moon Token"/></label><label>Ticker<input value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} placeholder="$MOON" maxLength={10}/></label><label>Description<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Tell people what your token is about..."/></label>
+  const [review,setReview]=useState(false);
+ if (review) {
+  return <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-head">
+        <div>
+          <span className="eyebrow">REVIEW LAUNCH</span>
+          <h3>{name || 'Moon Token'}</h3>
+        </div>
+        <button className="close" onClick={onClose}><X size={20}/></button>
+      </div>
+
+      <div className="modal-preview">
+        <span>Token details</span>
+        <b>{ticker || '$MOON'}</b>
+        <small>{description}</small>
+      </div>
+
+      <div className="modal-preview">
+        <span>Total supply</span>
+        <b>{supply}</b>
+        <small>Creator wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-6)}</small>
+      </div>
+
+      <div className="modal-row">
+        <button className="secondary" onClick={() => setReview(false)}>Back</button>
+        <button className="primary" onClick={() => onNotify('Phantom approval coming next')}>
+          <Rocket size={16}/> Approve & Launch
+        </button>
+      </div>
+
+      <p className="note">Review everything before approving the launch.</p>
+    </div>
+  </div>;
+}
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">TOKEN LAUNCHER</span><h3>Create a token</h3></div><button className="close" onClick={onClose}><X size={20}/></button></div><label>Token name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Moon Token"/></label><label>Ticker<input value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} placeholder="$MOON" maxLength={10}/></label><label>Description<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Tell people what your token is about..."/></label>
    <label>Token image URL<input value={image} onChange={e=>setImage(e.target.value)} placeholder="https://..."/></label>
 <label>Total supply<input value={supply} onChange={e=>setSupply(e.target.value)} inputMode="numeric" /></label>
    <div className="modal-preview"><span>Preview</span><b>{name || 'Moon Token'}</b><small>{ticker || '$MOON'} · {description || 'Your token description'}</small></div><div className="modal-row"><button className="secondary" onClick={onClose}>Cancel</button><button
@@ -144,7 +179,7 @@ const [supply,setSupply]=useState('1000000000');
       return;
     }
 
-    onNotify('Launch configuration ready — no transaction was sent');
+    setReview(true);
   }}
 >
   <Rocket size={16}/> Review Launch
