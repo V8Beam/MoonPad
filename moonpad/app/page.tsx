@@ -22,6 +22,7 @@ const events = [
 export default function Home() {
   const [active, setActive] = useState('Dashboard');
   const [connected, setConnected] = useState(false);
+const [walletAddress, setWalletAddress] = useState('');
   const [running, setRunning] = useState(true);
   const [showLaunch, setShowLaunch] = useState(false);
   const [search, setSearch] = useState('');
@@ -64,11 +65,12 @@ export default function Home() {
   try {
     const response = await provider.connect();
     setConnected(true);
+    setWalletAddress(response.publicKey.toString());
     notify(`Wallet connected: ${response.publicKey.toString().slice(0, 4)}...`);
   } catch {
     notify('Wallet connection cancelled');
   }
-}}><Wallet size={17}/>{connected ? '7xK...9Qm' : 'Connect Wallet'}</button></div>
+}}><Wallet size={17}/>{connected ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : 'Connect Wallet'}</button></div>
         </header>
 
         {active === 'Dashboard' && <>
