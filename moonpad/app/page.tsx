@@ -39,7 +39,10 @@ const [walletAddress, setWalletAddress] = useState('');
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState('');
   const [botEnabled, setBotEnabled] = useState(false);
-
+const [botEnabled, setBotEnabled] = useState(false);
+const [tradeMint, setTradeMint] = useState('');
+const [tradeAmount, setTradeAmount] = useState('');
+const [tradeStatus, setTradeStatus] = useState('');
   const filteredTokens = useMemo(() => tokens.filter(t => `${t.name} ${t.ticker}`.toLowerCase().includes(search.toLowerCase())), [search]);
 
   const notify = (message: string) => {
