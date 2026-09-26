@@ -5,9 +5,11 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import BN from 'bn.js';
 import {
   OnlinePumpSdk,
+  PUMP_SDK,
   getBuyTokenAmountFromSolAmount,
   getSellSolAmountFromTokenAmount,
 } from '@pump-fun/pump-sdk';
@@ -17,20 +19,24 @@ const RPC_URL =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
   'https://api.mainnet-beta.solana.com';
 
-const SOL_MINT = 'So11111111111111111111111111111111111111112';
+const SOL_MINT =
+  'So11111111111111111111111111111111111111112';
 
 function isPositiveInteger(value: string) {
   return /^\d+$/.test(value) && BigInt(value) > 0n;
 }
 
-function isValidSlippage(value: unknown) {
+function clampSlippageBps(value: unknown) {
   const number = Number(value);
 
   if (!Number.isFinite(number)) {
-    return 0.01;
+    return 100;
   }
 
-  return Math.min(Math.max(number, 0.001), 0.5);
+  return Math.min(
+    Math.max(Math.round(number), 10),
+    5000
+  );
 }
 
 export async function POST(request: Request) {
@@ -45,7 +51,12 @@ export async function POST(request: Request) {
       slippageBps = 100,
     } = body;
 
-    if (!inputMint || !outputMint || !amount || !userPublicKey) {
+    if (
+      !inputMint ||
+      !outputMint ||
+      !amount ||
+      !userPublicKey
+    ) {
       return NextResponse.json(
         { error: 'Missing trade parameters' },
         { status: 400 }
@@ -67,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            'Trade amount must be a positive integer in base units',
+            'Trade amount must be a positive integer in base units.',
         },
         { status: 400 }
       );
@@ -84,7 +95,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            'Pump trading currently supports SOL buys and SOL sells only.',
+            'Pump bonding-curve trading requires SOL as the quote asset.',
         },
         { status: 400 }
       );
@@ -92,156 +103,237 @@ export async function POST(request: Request) {
 
     if (isBuy && outputMint === SOL_MINT) {
       return NextResponse.json(
-        { error: 'Invalid buy token.' },
+        { error: 'Invalid buy pair.' },
         { status: 400 }
       );
     }
 
     if (isSell && inputMint === SOL_MINT) {
       return NextResponse.json(
-        { error: 'Invalid sell token.' },
+        { error: 'Invalid sell pair.' },
         { status: 400 }
       );
     }
 
-    const connection = new Connection(RPC_URL, 'confirmed');
+    const connection = new Connection(
+      RPC_URL,
+      'confirmed'
+    );
+
     const sdk = new OnlinePumpSdk(connection);
 
     const mint = isBuy ? output : input;
 
-    const slippage = isValidSlippage(
-      Number(slippageBps) / 10000
-    );
+    const safeSlippageBps =
+      clampSlippageBps(slippageBps);
 
-    const { blockhash, lastValidBlockHeight } =
-      await connection.getLatestBlockhash('confirmed');
+    const slippage =
+      safeSlippageBps / 100;
+
+    const {
+      blockhash,
+      lastValidBlockHeight,
+    } =
+      await connection.getLatestBlockhash(
+        'confirmed'
+      );
 
     let instructions;
-    let expectedOutput: string;
+    let expectedOutput: BN;
     let tradeType: 'buy' | 'sell';
 
     if (isBuy) {
       tradeType = 'buy';
 
-      const solAmount = new BN(String(amount));
+      const solAmount = new BN(
+        String(amount)
+      );
 
-      const [buyState, global, feeConfig] =
-        await Promise.all([
-          sdk.fetchBuyState(mint, user),
-          sdk.fetchGlobal(),
-          sdk.fetchFeeConfig(),
-        ]);
+      const [
+        buyState,
+        global,
+        feeConfig,
+      ] = await Promise.all([
+        sdk.fetchBuyState(
+          mint,
+          user
+        ),
+        sdk.fetchGlobal(),
+        sdk.fetchFeeConfig(),
+      ]);
+
+      if (!buyState.bondingCurve) {
+        return NextResponse.json(
+          {
+            error:
+              'Pump bonding curve was not found for this token.',
+          },
+          { status: 404 }
+        );
+      }
 
       if (buyState.bondingCurve.complete) {
         return NextResponse.json(
           {
             error:
-              'This token has graduated from the bonding curve. PumpSwap trading is required for this token.',
+              'This token has graduated to PumpSwap.',
             graduated: true,
           },
           { status: 409 }
         );
       }
 
-      const expectedTokens =
+      expectedOutput =
         getBuyTokenAmountFromSolAmount({
           global,
           feeConfig,
           mintSupply:
-            buyState.bondingCurve.tokenTotalSupply,
-          bondingCurve: buyState.bondingCurve,
+            buyState.bondingCurve
+              .tokenTotalSupply,
+          bondingCurve:
+            buyState.bondingCurve,
           amount: solAmount,
         });
 
-      if (expectedTokens.lte(new BN(0))) {
+      if (
+        expectedOutput.lte(
+          new BN(0)
+        )
+      ) {
         return NextResponse.json(
-          { error: 'The calculated token output is zero.' },
+          {
+            error:
+              'The calculated token output is zero.',
+          },
           { status: 400 }
         );
       }
 
-      instructions = await sdk.buyInstructions({
-        ...buyState,
-        mint,
-        user,
-        amount: expectedTokens,
-        solAmount,
-        slippage,
-      });
-
-      expectedOutput = expectedTokens.toString();
+      instructions =
+        await PUMP_SDK.buyInstructions({
+          ...buyState,
+          global,
+          mint,
+          user,
+          amount: expectedOutput,
+          solAmount,
+          slippage,
+          tokenProgram:
+            buyState.tokenProgram ||
+            TOKEN_PROGRAM_ID,
+        });
     } else {
       tradeType = 'sell';
 
-      const tokenAmount = new BN(String(amount));
+      const tokenAmount =
+        new BN(String(amount));
 
-      const [sellState, global, feeConfig] =
-        await Promise.all([
-          sdk.fetchSellState(mint, user),
-          sdk.fetchGlobal(),
-          sdk.fetchFeeConfig(),
-        ]);
+      const [
+        sellState,
+        global,
+        feeConfig,
+      ] = await Promise.all([
+        sdk.fetchSellState(
+          mint,
+          user
+        ),
+        sdk.fetchGlobal(),
+        sdk.fetchFeeConfig(),
+      ]);
 
-      if (sellState.bondingCurve.complete) {
+      if (!sellState.bondingCurve) {
         return NextResponse.json(
           {
             error:
-              'This token has graduated from the bonding curve. PumpSwap trading is required for this token.',
+              'Pump bonding curve was not found for this token.',
+          },
+          { status: 404 }
+        );
+      }
+
+      if (
+        sellState.bondingCurve.complete
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'This token has graduated to PumpSwap.',
             graduated: true,
           },
           { status: 409 }
         );
       }
 
-      const expectedSol =
+      expectedOutput =
         getSellSolAmountFromTokenAmount({
           global,
           feeConfig,
           mintSupply:
-            sellState.bondingCurve.tokenTotalSupply,
-          bondingCurve: sellState.bondingCurve,
+            sellState.bondingCurve
+              .tokenTotalSupply,
+          bondingCurve:
+            sellState.bondingCurve,
           amount: tokenAmount,
         });
 
-      if (expectedSol.lte(new BN(0))) {
+      if (
+        expectedOutput.lte(
+          new BN(0)
+        )
+      ) {
         return NextResponse.json(
-          { error: 'The calculated SOL output is zero.' },
+          {
+            error:
+              'The calculated SOL output is zero.',
+          },
           { status: 400 }
         );
       }
 
-      instructions = await sdk.sellInstructions({
-        ...sellState,
-        mint,
-        user,
-        amount: tokenAmount,
-        solAmount: expectedSol,
-        slippage,
-      });
-
-      expectedOutput = expectedSol.toString();
+      instructions =
+        await PUMP_SDK.sellInstructions({
+          ...sellState,
+          global,
+          mint,
+          user,
+          amount: tokenAmount,
+          solAmount: expectedOutput,
+          slippage,
+          tokenProgram:
+            sellState.tokenProgram ||
+            TOKEN_PROGRAM_ID,
+        });
     }
 
-    if (!instructions || instructions.length === 0) {
+    if (
+      !instructions ||
+      instructions.length === 0
+    ) {
       return NextResponse.json(
-        { error: 'Pump did not return any trade instructions.' },
+        {
+          error:
+            'Pump returned no trade instructions.',
+        },
         { status: 502 }
       );
     }
 
-    const messageV0 = new TransactionMessage({
-      payerKey: user,
-      recentBlockhash: blockhash,
-      instructions,
-    }).compileToV0Message();
+    const messageV0 =
+      new TransactionMessage({
+        payerKey: user,
+        recentBlockhash: blockhash,
+        instructions,
+      }).compileToV0Message();
 
-    const transaction = new VersionedTransaction(
-      messageV0
-    );
+    const transaction =
+      new VersionedTransaction(
+        messageV0
+      );
 
-    const serialized = Buffer.from(
-      transaction.serialize()
-    ).toString('base64');
+    const serialized =
+      Buffer.from(
+        transaction.serialize()
+      ).toString('base64');
 
     return NextResponse.json({
       transaction: serialized,
@@ -249,23 +341,30 @@ export async function POST(request: Request) {
       lastValidBlockHeight,
       tradeType,
       mint: mint.toBase58(),
-      expectedOutput,
-      slippage,
-      source: 'pump-bonding-curve',
+      expectedOutput:
+        expectedOutput.toString(),
+      slippageBps:
+        safeSlippageBps,
+      source:
+        'pump-bonding-curve',
     });
   } catch (error) {
-    console.error('MoonPad Pump trade error:', error);
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Failed to create Pump trade transaction';
+    console.error(
+      'MoonPad Pump trade error:',
+      error
+    );
 
     return NextResponse.json(
       {
-        error: message,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create Pump trade transaction',
       },
       { status: 500 }
+    );
+  }
+}
     );
   }
 }
