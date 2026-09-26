@@ -319,7 +319,7 @@ const supply = '1000000000';
 
       <div className="modal-preview">
         <span>Total supply</span>
-        <b>{supply}</b>
+<b>1,000,000,000</b>
         <small>Creator wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-6)}</small>
       </div>
 
