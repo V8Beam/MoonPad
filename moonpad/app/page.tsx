@@ -45,6 +45,7 @@ const [tradeAmount, setTradeAmount] = useState('');
 const [stopLoss, setStopLoss] = useState('');
 const [takeProfit, setTakeProfit] = useState('');
 const [tradeStatus, setTradeStatus] = useState('');
+  const [entryPrice, setEntryPrice] = useState<number | null>(null);
   const filteredTokens = useMemo(() => tokens.filter(t => `${t.name} ${t.ticker}`.toLowerCase().includes(search.toLowerCase())), [search]);
 
   const notify = (message: string) => {
