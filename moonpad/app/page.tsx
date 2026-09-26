@@ -157,6 +157,9 @@ export default function Home() {
   const [watchPrice, setWatchPrice] =
     useState<number | null>(null);
 
+  const [loadingPrice, setLoadingPrice] =
+    useState(false);
+
   const [createdTokens, setCreatedTokens] =
     useState<TokenItem[]>([]);
 
@@ -264,6 +267,37 @@ export default function Home() {
     }
   };
 
+  const toTokenBaseUnits = (
+    value: string,
+    decimals: number
+  ) => {
+    const clean = value.trim();
+
+    if (!/^\d+(\.\d+)?$/.test(clean)) {
+      throw new Error(
+        'Enter a valid token amount.'
+      );
+    }
+
+    const [whole, fraction = ''] =
+      clean.split('.');
+
+    if (fraction.length > decimals) {
+      throw new Error(
+        `This token supports ${decimals} decimal places.`
+      );
+    }
+
+    const paddedFraction =
+      fraction.padEnd(decimals, '0');
+
+    const combined =
+      `${whole}${paddedFraction}`
+        .replace(/^0+(?=\d)/, '');
+
+    return combined || '0';
+  };
+
   const refreshBalance = async (
     address?: string
   ) => {
@@ -325,18 +359,19 @@ export default function Home() {
           owner,
           {
             mint: mintKey,
-          }
+          },
+          'confirmed'
         );
 
       let balance = 0;
       let decimals = 0;
 
       for (const account of accounts.value) {
-        const info =
-          account.account.data.parsed?.info;
+        const parsedData =
+          account.account.data as any;
 
         const tokenAmount =
-          info?.tokenAmount;
+          parsedData?.parsed?.info?.tokenAmount;
 
         if (tokenAmount) {
           balance += Number(
@@ -514,9 +549,15 @@ export default function Home() {
       return;
     }
 
-    refreshTokenBalance(
-      tradeMint.trim()
-    );
+    const timeout =
+      window.setTimeout(() => {
+        refreshTokenBalance(
+          tradeMint.trim()
+        );
+      }, 350);
+
+    return () =>
+      window.clearTimeout(timeout);
   }, [
     connected,
     walletAddress,
@@ -583,6 +624,9 @@ export default function Home() {
     setSolBalance(null);
     setTokenBalance(null);
     setTokenDecimals(null);
+    setTradeStatus('');
+    setBotEnabled(false);
+    setTriggered(null);
 
     addActivity(
       'Wallet',
@@ -699,12 +743,13 @@ export default function Home() {
 
     if (
       !amount ||
-      Number(amount) <= 0
+      !/^\d+$/.test(amount) ||
+      amount === '0'
     ) {
       throw new Error(
         action === 'Buy'
-          ? 'Enter a SOL amount.'
-          : 'Enter a token amount.'
+          ? 'Enter a valid SOL amount.'
+          : 'Enter a valid token amount.'
       );
     }
 
@@ -792,19 +837,22 @@ export default function Home() {
         );
 
       setTradeStatus(
-        `Transaction submitted — waiting for confirmation...`
+        'Transaction submitted — waiting for confirmation...'
       );
+
+      const recentBlockhash =
+        transaction.message
+          .recentBlockhash;
 
       if (
         data.lastValidBlockHeight &&
-        transaction.message.recentBlockhash
+        recentBlockhash
       ) {
         await connection.confirmTransaction(
           {
             signature,
             blockhash:
-              transaction.message
-                .recentBlockhash,
+              recentBlockhash,
             lastValidBlockHeight:
               data.lastValidBlockHeight,
           },
@@ -863,13 +911,16 @@ export default function Home() {
         );
       }
 
-      if (!tradeMint.trim()) {
+      const mint =
+        tradeMint.trim();
+
+      if (!mint) {
         throw new Error(
           'Enter a token mint address.'
         );
       }
 
-      if (!isValidMint(tradeMint)) {
+      if (!isValidMint(mint)) {
         throw new Error(
           'Invalid Solana token mint address.'
         );
@@ -877,6 +928,9 @@ export default function Home() {
 
       if (
         !tradeAmount ||
+        !/^\d+(\.\d+)?$/.test(
+          tradeAmount.trim()
+        ) ||
         Number(tradeAmount) <= 0
       ) {
         throw new Error(
@@ -894,19 +948,34 @@ export default function Home() {
         );
       }
 
-      const lamports = Math.floor(
-        Number(tradeAmount) *
-          1_000_000_000
-      );
+      const lamports =
+        Math.floor(
+          Number(tradeAmount) *
+            1_000_000_000
+        );
+
+      if (
+        !Number.isSafeInteger(
+          lamports
+        ) ||
+        lamports <= 0
+      ) {
+        throw new Error(
+          'Buy amount is invalid.'
+        );
+      }
 
       await sendSwap({
         inputMint: SOL_MINT,
-        outputMint:
-          tradeMint.trim(),
+        outputMint: mint,
         amount:
           lamports.toString(),
         action: 'Buy',
       });
+
+      await refreshTokenBalance(
+        mint
+      );
     } catch (error) {
       console.error(
         'MoonPad buy error:',
@@ -935,24 +1004,35 @@ export default function Home() {
         );
       }
 
-      if (!tradeMint.trim()) {
+      const mint =
+        tradeMint.trim();
+
+      if (!mint) {
         throw new Error(
           'Enter a token mint address.'
         );
       }
 
-      if (!isValidMint(tradeMint)) {
+      if (!isValidMint(mint)) {
         throw new Error(
           'Invalid Solana token mint address.'
         );
       }
 
+      if (!sellAmount.trim()) {
+        throw new Error(
+          'Enter the token amount to sell.'
+        );
+      }
+
       if (
-        !sellAmount ||
+        !/^\d+(\.\d+)?$/.test(
+          sellAmount.trim()
+        ) ||
         Number(sellAmount) <= 0
       ) {
         throw new Error(
-          'Enter the token amount to sell.'
+          'Enter a valid token amount.'
         );
       }
 
@@ -975,25 +1055,30 @@ export default function Home() {
       }
 
       const baseUnits =
-        Math.floor(
-          Number(sellAmount) *
-            10 ** tokenDecimals
+        toTokenBaseUnits(
+          sellAmount,
+          tokenDecimals
         );
 
-      if (baseUnits <= 0) {
+      if (baseUnits === '0') {
         throw new Error(
           'Sell amount is too small.'
         );
       }
 
       await sendSwap({
-        inputMint:
-          tradeMint.trim(),
+        inputMint: mint,
         outputMint: SOL_MINT,
         amount:
-          baseUnits.toString(),
+          baseUnits,
         action: 'Sell',
       });
+
+      setSellAmount('');
+
+      await refreshTokenBalance(
+        mint
+      );
     } catch (error) {
       console.error(
         'MoonPad sell error:',
@@ -1034,14 +1119,17 @@ export default function Home() {
       return;
     }
 
-    if (!tradeMint.trim()) {
+    const mint =
+      tradeMint.trim();
+
+    if (!mint) {
       notify(
         'Enter a token mint.'
       );
       return;
     }
 
-    if (!isValidMint(tradeMint)) {
+    if (!isValidMint(mint)) {
       notify(
         'Enter a valid Solana mint.'
       );
@@ -1084,9 +1172,7 @@ export default function Home() {
       );
 
       const price =
-        await getPrice(
-          tradeMint.trim()
-        );
+        await getPrice(mint);
 
       setEntryPrice(price);
       setCurrentPrice(price);
@@ -1096,9 +1182,10 @@ export default function Home() {
 
       addActivity(
         'Trading Assistant',
-        `started monitoring ${tradeMint
-          .trim()
-          .slice(0, 8)}...`
+        `started monitoring ${mint.slice(
+          0,
+          8
+        )}...`
       );
 
       setTradeStatus(
@@ -1285,27 +1372,38 @@ export default function Home() {
 
   const refreshWatchPrice =
     async () => {
-      if (!tradeMint.trim()) {
+      const mint =
+        tradeMint.trim();
+
+      if (!mint) {
         notify(
           'Enter a token mint first.'
         );
         return;
       }
 
+      if (!isValidMint(mint)) {
+        notify(
+          'Enter a valid Solana mint.'
+        );
+        return;
+      }
+
       try {
+        setLoadingPrice(true);
+
         const price =
-          await getPrice(
-            tradeMint.trim()
-          );
+          await getPrice(mint);
 
         setWatchPrice(price);
         setWatching(true);
 
         addActivity(
           'Market Monitor',
-          `price updated for ${tradeMint
-            .trim()
-            .slice(0, 8)}...`
+          `price updated for ${mint.slice(
+            0,
+            8
+          )}...`
         );
 
         notify(
@@ -1317,6 +1415,8 @@ export default function Home() {
             ? error.message
             : 'Unable to read price.'
         );
+      } finally {
+        setLoadingPrice(false);
       }
     };
 
@@ -1360,6 +1460,14 @@ export default function Home() {
       'Token loaded into trading'
     );
   };
+
+  const estimatedPnlSol =
+    changePercent !== null &&
+    tradeAmount &&
+    Number(tradeAmount) > 0
+      ? Number(tradeAmount) *
+        (changePercent / 100)
+      : null;
 
   const nav = [
     [
@@ -1776,8 +1884,13 @@ export default function Home() {
                     onClick={
                       refreshWatchPrice
                     }
+                    disabled={
+                      loadingPrice
+                    }
                   >
-                    Check Price
+                    {loadingPrice
+                      ? 'Reading...'
+                      : 'Check Price'}
                   </button>
 
                   {watching &&
@@ -2115,10 +2228,13 @@ export default function Home() {
                 {tokenBalance !==
                     null && (
                   <span>
-                    Token balance:{' '}
+                    Available:{' '}
                     {formatTokenBalance(
                       tokenBalance
                     )}
+                    {tokenDecimals !==
+                      null &&
+                      ` · ${tokenDecimals} decimals`}
                   </span>
                 )}
 
@@ -2195,11 +2311,11 @@ export default function Home() {
                 </button>
 
                 <span>
-                  Sell amounts are
-                  entered normally;
-                  MoonPad converts them
-                  to token base units
-                  automatically.
+                  Enter token amounts
+                  normally. MoonPad
+                  converts them into
+                  exact on-chain base
+                  units automatically.
                 </span>
 
                 {tradeStatus && (
@@ -2369,6 +2485,28 @@ export default function Home() {
                       2
                     )}
                     %
+                  </span>
+                )}
+
+                {estimatedPnlSol !==
+                    null && (
+                  <span
+                    className={
+                      estimatedPnlSol >=
+                      0
+                        ? 'up'
+                        : ''
+                    }
+                  >
+                    Estimated P&amp;L:{' '}
+                    {estimatedPnlSol >=
+                    0
+                      ? '+'
+                      : '-'}
+                    {Math.abs(
+                      estimatedPnlSol
+                    ).toFixed(6)}{' '}
+                    SOL
                   </span>
                 )}
 
@@ -2625,6 +2763,7 @@ export default function Home() {
                     <Gauge
                       size={14}
                     />
+
                     {refreshingBalance
                       ? 'Refreshing...'
                       : 'Refresh'}
@@ -3468,6 +3607,26 @@ function LaunchModal({
                     );
                   }
 
+                  if (
+                    !/^[A-Z0-9]{1,9}$/.test(
+                      cleanTicker
+                    )
+                  ) {
+                    throw new Error(
+                      'Ticker must contain only letters and numbers.'
+                    );
+                  }
+
+                  if (
+                    !/^https?:\/\//i.test(
+                      cleanImage
+                    )
+                  ) {
+                    throw new Error(
+                      'Image must be a valid http or https URL.'
+                    );
+                  }
+
                   const metadataResponse =
                     await fetch(
                       '/api/metadata',
@@ -3568,10 +3727,6 @@ function LaunchModal({
                     mintKeypair
                   );
 
-                  setLaunching(
-                    true
-                  );
-
                   const signed =
                     await provider.signTransaction(
                       transaction
@@ -3585,6 +3740,13 @@ function LaunchModal({
                         skipPreflight: false,
                       }
                     );
+
+                  setTradeStatusSafe(
+                    `Launch submitted: ${signature.slice(
+                      0,
+                      8
+                    )}...`
+                  );
 
                   await connection.confirmTransaction(
                     {
@@ -3889,6 +4051,13 @@ function LaunchModal({
       </div>
     </div>
   );
+}
+
+function setTradeStatusSafe(
+  _message: string
+) {
+  // Launch status is intentionally kept
+  // inside the launch modal flow.
 }
 
 function copyValue(
