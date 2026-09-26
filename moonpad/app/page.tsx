@@ -190,9 +190,83 @@ const [tradeStatus, setTradeStatus] = useState('');
   Buy
 </button>
 
-    <button onClick={() => setTradeStatus('Sell ready — Phantom approval will be added next.')}>
-      Sell
-    </button>
+    <button
+  onClick={async () => {
+    try {
+      const provider = (window as any).phantom?.solana;
+
+      if (!provider || !provider.publicKey) {
+        setTradeStatus('Connect Phantom first.');
+        return;
+      }
+
+      if (!tradeMint.trim() || !tradeAmount) {
+        setTradeStatus('Enter a token mint and token amount.');
+        return;
+      }
+
+      setTradeStatus('Preparing sell transaction...');
+
+      const mintResponse = await fetch(
+        `https://api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(
+          tradeMint.trim()
+        )}&outputMint=So11111111111111111111111111111111111111112&amount=${encodeURIComponent(
+          tradeAmount
+        )}&slippageBps=100`
+      );
+
+      const quote = await mintResponse.json();
+
+      if (!mintResponse.ok) {
+        throw new Error(quote.error || 'Failed to prepare sell');
+      }
+
+      const response = await fetch('/api/swap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputMint: tradeMint.trim(),
+          outputMint: 'So11111111111111111111111111111111111111112',
+          amount: tradeAmount,
+          userPublicKey: provider.publicKey.toString(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to prepare sell transaction');
+      }
+
+      setTradeStatus('Transaction ready — Phantom approval coming up.');
+
+      const transaction = VersionedTransaction.deserialize(
+        Uint8Array.from(
+          atob(data.swapTransaction),
+          c => c.charCodeAt(0)
+        )
+      );
+
+      const signed = await provider.signTransaction(transaction);
+
+      const signature = await connection.sendRawTransaction(
+        signed.serialize(),
+        { maxRetries: 2 }
+      );
+
+      setTradeStatus(`Sell submitted: ${signature.slice(0, 8)}...`);
+    } catch (error) {
+      console.error('MoonPad sell error:', error);
+      setTradeStatus(
+        error instanceof Error ? error.message : 'Sell failed.'
+      );
+    }
+  }}
+>
+  Sell
+</button>
 
     {tradeStatus && <span>{tradeStatus}</span>}
   </div>
