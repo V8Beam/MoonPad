@@ -211,7 +211,7 @@ const signed = await provider.signTransaction(transaction);
 const signature = await connection.sendRawTransaction(signed.serialize());
 
 onNotify(`Launch submitted: ${signature.slice(0, 8)}...`);
-  } catch {
+  
     } catch (error) {
   console.error('MoonPad launch error:', error);
 
