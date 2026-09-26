@@ -25,7 +25,7 @@ export default function Home() {
   const [active, setActive] = useState('Dashboard');
   const [connected, setConnected] = useState(false);
 const [walletAddress, setWalletAddress] = useState('');
-  const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+  const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
   useEffect(() => {
   const provider = (window as any).phantom?.solana;
 
