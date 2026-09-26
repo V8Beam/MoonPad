@@ -409,10 +409,10 @@ onNotify(`Launch confirmed: ${signature.slice(0, 8)}...`);
    <div className="modal-preview"><span>Preview</span><b>{name || 'Moon Token'}</b><small>{ticker || '$MOON'} · {description || 'Your token description'}</small></div><div className="modal-row"><button className="secondary" onClick={onClose}>Cancel</button><button
   className="primary"
   onClick={() => {
-    if (!name.trim() || !ticker.trim() || !description.trim()) {
-      onNotify('Name, ticker, and description are required');
-      return;
-    }
+if (!name.trim() || !ticker.trim() || !description.trim() || !image.trim()) {
+  onNotify('Name, ticker, description, and image are required');
+  return;
+}
 
     if (!walletAddress) {
       onNotify('Connect your Phantom wallet first');
