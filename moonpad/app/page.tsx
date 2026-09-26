@@ -39,7 +39,7 @@ const [walletAddress, setWalletAddress] = useState('');
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState('');
   const [botEnabled, setBotEnabled] = useState(false);
-const [botEnabled, setBotEnabled] = useState(false);
+
 const [tradeMint, setTradeMint] = useState('');
 const [tradeAmount, setTradeAmount] = useState('');
 const [tradeStatus, setTradeStatus] = useState('');
