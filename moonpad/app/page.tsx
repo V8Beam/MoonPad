@@ -212,8 +212,15 @@ const signature = await connection.sendRawTransaction(signed.serialize());
 
 onNotify(`Launch submitted: ${signature.slice(0, 8)}...`);
   } catch {
-    onNotify('Transaction cancelled or failed');
+    } catch (error) {
+  console.error('MoonPad launch error:', error);
+
+  if (error instanceof Error) {
+    onNotify(error.message);
+  } else {
+    onNotify('Transaction failed. Check the browser console.');
   }
+}
 }}>
           <Rocket size={16}/> Approve & Launch
         </button>
