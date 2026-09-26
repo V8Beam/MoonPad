@@ -124,9 +124,71 @@ const [tradeStatus, setTradeStatus] = useState('');
       step="0.001"
     />
 
-    <button onClick={() => setTradeStatus('Buy ready — Phantom approval will be added next.')}>
-      Buy
-    </button>
+    <button
+  onClick={async () => {
+    try {
+      const provider = (window as any).phantom?.solana;
+
+      if (!provider || !provider.publicKey) {
+        setTradeStatus('Connect Phantom first.');
+        return;
+      }
+
+      if (!tradeMint.trim() || !tradeAmount) {
+        setTradeStatus('Enter a token mint and SOL amount.');
+        return;
+      }
+
+      setTradeStatus('Preparing buy transaction...');
+
+      const lamports = Math.floor(Number(tradeAmount) * 1_000_000_000);
+
+      const response = await fetch('/api/swap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputMint: 'So11111111111111111111111111111111111111112',
+          outputMint: tradeMint.trim(),
+          amount: lamports.toString(),
+          userPublicKey: provider.publicKey.toString(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to prepare swap');
+      }
+
+      setTradeStatus('Transaction ready — Phantom approval coming up.');
+
+      const transaction = VersionedTransaction.deserialize(
+        Uint8Array.from(
+          atob(data.swapTransaction),
+          c => c.charCodeAt(0)
+        )
+      );
+
+      const signed = await provider.signTransaction(transaction);
+
+      const signature = await connection.sendRawTransaction(
+        signed.serialize(),
+        { maxRetries: 2 }
+      );
+
+      setTradeStatus(`Buy submitted: ${signature.slice(0, 8)}...`);
+    } catch (error) {
+      console.error('MoonPad buy error:', error);
+      setTradeStatus(
+        error instanceof Error ? error.message : 'Buy failed.'
+      );
+    }
+  }}
+>
+  Buy
+</button>
 
     <button onClick={() => setTradeStatus('Sell ready — Phantom approval will be added next.')}>
       Sell
