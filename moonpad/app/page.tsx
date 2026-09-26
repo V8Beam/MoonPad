@@ -59,7 +59,7 @@ const [walletAddress, setWalletAddress] = useState('');
         <div className="brand"><div className="moon">☾</div><div><b>MoonPad</b><span>AI token platform</span></div></div>
         <nav>{nav.map(([label, Icon]) => <button key={label} className={active === label ? 'nav active' : 'nav'} onClick={() => label === 'Launch Token' ? setShowLaunch(true) : setActive(label)}><Icon size={18}/><span>{label}</span>{label === 'Dashboard' && <i>⌂</i>}</button>)}</nav>
         <div className="side-card"><Sparkles size={18}/><b>MoonPad AI</b><p>Your agent workspace is ready.</p><button onClick={() => setActive('AI Agents')}>Open agents <ChevronRight size={15}/></button></div>
-        <div className="network"><span className="dot"/> Solana network <small>Demo mode</small></div>
+        <div className="network"><span className="dot"/> Solana network <small>Mainnet</small></div>
       </aside>
 
       <section className="content">
