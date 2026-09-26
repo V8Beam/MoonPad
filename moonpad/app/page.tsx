@@ -55,6 +55,12 @@ type ActivityEvent = {
   action: string;
 };
 
+type TokenBalance = {
+  rawAmount: string;
+  humanAmount: string;
+  decimals: number;
+};
+
 const demoTokens: TokenItem[] = [
   {
     name: 'Moon',
@@ -115,11 +121,13 @@ export default function Home() {
     useState('');
 
   const [tokenBalance, setTokenBalance] =
-    useState<number | null>(null);
-  const [tokenDecimals, setTokenDecimals] =
-    useState<number | null>(null);
+    useState<TokenBalance | null>(null);
+
   const [loadingTokenBalance, setLoadingTokenBalance] =
     useState(false);
+
+  const [tokenBalanceRefreshKey, setTokenBalanceRefreshKey] =
+    useState(0);
 
   const [stopLoss, setStopLoss] =
     useState('');
@@ -202,6 +210,18 @@ export default function Home() {
     [allTokens, search]
   );
 
+  const selectedToken = useMemo(
+    () =>
+      allTokens.find(
+        (token) =>
+          token.mint === tradeMint.trim()
+      ),
+    [allTokens, tradeMint]
+  );
+
+  const tokenLabel =
+    selectedToken?.ticker || 'TOKEN';
+
   const notify = (message: string) => {
     setToast(message);
 
@@ -273,6 +293,12 @@ export default function Home() {
   ) => {
     const clean = value.trim();
 
+    if (!clean) {
+      throw new Error(
+        'Enter a token amount.'
+      );
+    }
+
     if (!/^\d+(\.\d+)?$/.test(clean)) {
       throw new Error(
         'Enter a valid token amount.'
@@ -284,7 +310,7 @@ export default function Home() {
 
     if (fraction.length > decimals) {
       throw new Error(
-        `This token supports ${decimals} decimal places.`
+        `This token supports up to ${decimals} decimal places.`
       );
     }
 
@@ -296,6 +322,33 @@ export default function Home() {
         .replace(/^0+(?=\d)/, '');
 
     return combined || '0';
+  };
+
+  const fromTokenBaseUnits = (
+    raw: string,
+    decimals: number
+  ) => {
+    if (decimals === 0) {
+      return raw;
+    }
+
+    const padded =
+      raw.padStart(decimals + 1, '0');
+
+    const split =
+      padded.length - decimals;
+
+    const whole =
+      padded.slice(0, split);
+
+    const fraction =
+      padded
+        .slice(split)
+        .replace(/0+$/, '');
+
+    return fraction
+      ? `${whole}.${fraction}`
+      : whole;
   };
 
   const refreshBalance = async (
@@ -335,13 +388,11 @@ export default function Home() {
 
     if (!walletAddress || !mint) {
       setTokenBalance(null);
-      setTokenDecimals(null);
       return;
     }
 
     if (!isValidMint(mint)) {
       setTokenBalance(null);
-      setTokenDecimals(null);
       return;
     }
 
@@ -363,7 +414,7 @@ export default function Home() {
           'confirmed'
         );
 
-      let balance = 0;
+      let rawAmount = '0';
       let decimals = 0;
 
       for (const account of accounts.value) {
@@ -373,23 +424,37 @@ export default function Home() {
         const tokenAmount =
           parsedData?.parsed?.info?.tokenAmount;
 
-        if (tokenAmount) {
-          balance += Number(
-            tokenAmount.uiAmount || 0
+        if (!tokenAmount) {
+          continue;
+        }
+
+        const accountRaw =
+          String(
+            tokenAmount.amount || '0'
           );
 
-          decimals =
-            Number(
-              tokenAmount.decimals || 0
-            );
-        }
+        rawAmount = (
+          BigInt(rawAmount) +
+          BigInt(accountRaw)
+        ).toString();
+
+        decimals =
+          Number(
+            tokenAmount.decimals || 0
+          );
       }
 
-      setTokenBalance(balance);
-      setTokenDecimals(decimals);
+      setTokenBalance({
+        rawAmount,
+        decimals,
+        humanAmount:
+          fromTokenBaseUnits(
+            rawAmount,
+            decimals
+          ),
+      });
     } catch {
       setTokenBalance(null);
-      setTokenDecimals(null);
     } finally {
       setLoadingTokenBalance(false);
     }
@@ -451,7 +516,6 @@ export default function Home() {
           setWalletAddress('');
           setSolBalance(null);
           setTokenBalance(null);
-          setTokenDecimals(null);
           return;
         }
 
@@ -461,7 +525,9 @@ export default function Home() {
         setConnected(true);
         setWalletAddress(address);
         refreshBalance(address);
-        refreshTokenBalance();
+        setTokenBalanceRefreshKey(
+          (value) => value + 1
+        );
 
         addActivity(
           'Wallet',
@@ -474,7 +540,6 @@ export default function Home() {
         setWalletAddress('');
         setSolBalance(null);
         setTokenBalance(null);
-        setTokenDecimals(null);
 
         addActivity(
           'Wallet',
@@ -528,9 +593,7 @@ export default function Home() {
       }, 15000);
 
     return () => {
-      window.clearInterval(
-        interval
-      );
+      window.clearInterval(interval);
     };
   }, [
     connected,
@@ -545,7 +608,6 @@ export default function Home() {
       !tradeMint.trim()
     ) {
       setTokenBalance(null);
-      setTokenDecimals(null);
       return;
     }
 
@@ -562,6 +624,7 @@ export default function Home() {
     connected,
     walletAddress,
     tradeMint,
+    tokenBalanceRefreshKey,
   ]);
 
   const connectWallet = async () => {
@@ -623,7 +686,6 @@ export default function Home() {
     setWalletAddress('');
     setSolBalance(null);
     setTokenBalance(null);
-    setTokenDecimals(null);
     setTradeStatus('');
     setBotEnabled(false);
     setTriggered(null);
@@ -658,6 +720,10 @@ export default function Home() {
           tradeMint.trim()
         );
       }
+
+      setTokenBalanceRefreshKey(
+        (value) => value + 1
+      );
 
       notify(
         'Balances refreshed'
@@ -841,11 +907,11 @@ export default function Home() {
       );
 
       const recentBlockhash =
-        transaction.message
-          .recentBlockhash;
+        transaction.message.recentBlockhash;
 
       if (
-        data.lastValidBlockHeight &&
+        typeof data.lastValidBlockHeight ===
+          'number' &&
         recentBlockhash
       ) {
         await connection.confirmTransaction(
@@ -865,9 +931,7 @@ export default function Home() {
         );
       }
 
-      setLastSignature(
-        signature
-      );
+      setLastSignature(signature);
 
       setTradeStatus(
         `${action} confirmed: ${signature.slice(
@@ -886,6 +950,10 @@ export default function Home() {
       );
 
       await refreshBalance();
+
+      setTokenBalanceRefreshKey(
+        (value) => value + 1
+      );
 
       if (tradeMint.trim()) {
         await refreshTokenBalance(
@@ -926,12 +994,15 @@ export default function Home() {
         );
       }
 
+      const cleanAmount =
+        tradeAmount.trim();
+
       if (
-        !tradeAmount ||
+        !cleanAmount ||
         !/^\d+(\.\d+)?$/.test(
-          tradeAmount.trim()
+          cleanAmount
         ) ||
-        Number(tradeAmount) <= 0
+        Number(cleanAmount) <= 0
       ) {
         throw new Error(
           'Enter a valid SOL amount.'
@@ -940,7 +1011,7 @@ export default function Home() {
 
       if (
         solBalance !== null &&
-        Number(tradeAmount) >=
+        Number(cleanAmount) >=
           solBalance
       ) {
         throw new Error(
@@ -950,7 +1021,7 @@ export default function Home() {
 
       const lamports =
         Math.floor(
-          Number(tradeAmount) *
+          Number(cleanAmount) *
             1_000_000_000
         );
 
@@ -972,6 +1043,8 @@ export default function Home() {
           lamports.toString(),
         action: 'Buy',
       });
+
+      setTradeAmount('');
 
       await refreshTokenBalance(
         mint
@@ -1019,50 +1092,39 @@ export default function Home() {
         );
       }
 
-      if (!sellAmount.trim()) {
+      if (!tokenBalance) {
+        throw new Error(
+          'Token balance is unavailable. Refresh your balance.'
+        );
+      }
+
+      const cleanAmount =
+        sellAmount.trim();
+
+      if (!cleanAmount) {
         throw new Error(
           'Enter the token amount to sell.'
         );
       }
 
-      if (
-        !/^\d+(\.\d+)?$/.test(
-          sellAmount.trim()
-        ) ||
-        Number(sellAmount) <= 0
-      ) {
-        throw new Error(
-          'Enter a valid token amount.'
-        );
-      }
-
-      if (
-        tokenBalance !== null &&
-        Number(sellAmount) >
-          tokenBalance
-      ) {
-        throw new Error(
-          'Sell amount exceeds your token balance.'
-        );
-      }
-
-      if (
-        tokenDecimals === null
-      ) {
-        throw new Error(
-          'Token decimals are not available yet. Refresh the token balance.'
-        );
-      }
-
       const baseUnits =
         toTokenBaseUnits(
-          sellAmount,
-          tokenDecimals
+          cleanAmount,
+          tokenBalance.decimals
         );
 
       if (baseUnits === '0') {
         throw new Error(
-          'Sell amount is too small.'
+          'Sell amount must be greater than 0.'
+        );
+      }
+
+      if (
+        BigInt(baseUnits) >
+        BigInt(tokenBalance.rawAmount)
+      ) {
+        throw new Error(
+          `Sell amount exceeds your available ${tokenLabel} balance.`
         );
       }
 
@@ -1097,8 +1159,8 @@ export default function Home() {
 
   const fillMaxSell = () => {
     if (
-      tokenBalance === null ||
-      tokenBalance <= 0
+      !tokenBalance ||
+      tokenBalance.rawAmount === '0'
     ) {
       notify(
         'No token balance detected'
@@ -1107,7 +1169,7 @@ export default function Home() {
     }
 
     setSellAmount(
-      tokenBalance.toString()
+      tokenBalance.humanAmount
     );
   };
 
@@ -1452,9 +1514,9 @@ export default function Home() {
     setTradeMint(mint);
     setActive('AI Agents');
 
-    window.setTimeout(() => {
-      refreshTokenBalance(mint);
-    }, 0);
+    setTokenBalanceRefreshKey(
+      (value) => value + 1
+    );
 
     notify(
       'Token loaded into trading'
@@ -2210,11 +2272,34 @@ export default function Home() {
 
                 <button
                   className="secondary"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!tradeMint.trim()) {
+                      notify(
+                        'Enter a token mint first'
+                      );
+                      return;
+                    }
+
+                    if (
+                      !isValidMint(
+                        tradeMint
+                      )
+                    ) {
+                      notify(
+                        'Invalid Solana mint address'
+                      );
+                      return;
+                    }
+
+                    setTokenBalanceRefreshKey(
+                      (value) =>
+                        value + 1
+                    );
+
                     refreshTokenBalance(
                       tradeMint
-                    )
-                  }
+                    );
+                  }}
                   disabled={
                     loadingTokenBalance ||
                     !tradeMint.trim()
@@ -2226,17 +2311,30 @@ export default function Home() {
                 </button>
 
                 {tokenBalance !==
-                    null && (
+                  null && (
                   <span>
                     Available:{' '}
-                    {formatTokenBalance(
-                      tokenBalance
-                    )}
-                    {tokenDecimals !==
-                      null &&
-                      ` · ${tokenDecimals} decimals`}
+                    <b>
+                      {formatTokenBalance(
+                        tokenBalance.humanAmount
+                      )}{' '}
+                      {tokenLabel}
+                    </b>
+                    {' · '}
+                    {tokenBalance.decimals}{' '}
+                    decimals
                   </span>
                 )}
+
+                {tokenBalance === null &&
+                  tradeMint.trim() &&
+                  !loadingTokenBalance && (
+                    <span>
+                      No token balance
+                      detected for this
+                      wallet.
+                    </span>
+                  )}
 
                 <input
                   value={
@@ -2275,7 +2373,7 @@ export default function Home() {
                       e.target.value
                     )
                   }
-                  placeholder="Sell token amount"
+                  placeholder={`Sell ${tokenLabel} amount`}
                   type="number"
                   min="0"
                   step="any"
@@ -2287,10 +2385,9 @@ export default function Home() {
                     fillMaxSell
                   }
                   disabled={
-                    tokenBalance ===
-                      null ||
-                    tokenBalance <=
-                      0 ||
+                    !tokenBalance ||
+                    tokenBalance.rawAmount ===
+                      '0' ||
                     tradeLoading
                   }
                 >
@@ -2311,11 +2408,10 @@ export default function Home() {
                 </button>
 
                 <span>
-                  Enter token amounts
-                  normally. MoonPad
-                  converts them into
-                  exact on-chain base
-                  units automatically.
+                  Buy amounts use SOL.
+                  Sell amounts use the
+                  token's normal
+                  human-readable amount.
                 </span>
 
                 {tradeStatus && (
@@ -2867,51 +2963,40 @@ export default function Home() {
 function formatPrice(
   price: number
 ) {
-  if (
-    price >= 1
-  ) {
-    return price.toFixed(
-      4
-    );
+  if (price >= 1) {
+    return price.toFixed(4);
   }
 
-  if (
-    price >= 0.01
-  ) {
-    return price.toFixed(
-      6
-    );
+  if (price >= 0.01) {
+    return price.toFixed(6);
   }
 
-  return price.toPrecision(
-    6
-  );
+  return price.toPrecision(6);
 }
 
 function formatTokenBalance(
-  balance: number
+  balance: string
 ) {
-  if (!Number.isFinite(balance)) {
+  if (!balance) {
     return '0';
   }
 
-  if (balance === 0) {
+  const number =
+    Number(balance);
+
+  if (!Number.isFinite(number)) {
+    return balance;
+  }
+
+  if (number === 0) {
     return '0';
   }
 
-  if (balance >= 1000) {
-    return balance.toLocaleString(
-      undefined,
-      {
-        maximumFractionDigits: 4,
-      }
-    );
-  }
-
-  return balance.toLocaleString(
+  return number.toLocaleString(
     undefined,
     {
-      maximumFractionDigits: 9,
+      maximumFractionDigits:
+        number >= 1000 ? 4 : 9,
     }
   );
 }
@@ -3542,9 +3627,7 @@ function LaunchModal({
             <button
               className="secondary"
               onClick={() =>
-                setReview(
-                  false
-                )
+                setReview(false)
               }
               disabled={
                 launching
@@ -3740,13 +3823,6 @@ function LaunchModal({
                         skipPreflight: false,
                       }
                     );
-
-                  setTradeStatusSafe(
-                    `Launch submitted: ${signature.slice(
-                      0,
-                      8
-                    )}...`
-                  );
 
                   await connection.confirmTransaction(
                     {
@@ -4051,13 +4127,6 @@ function LaunchModal({
       </div>
     </div>
   );
-}
-
-function setTradeStatusSafe(
-  _message: string
-) {
-  // Launch status is intentionally kept
-  // inside the launch modal flow.
 }
 
 function copyValue(
