@@ -374,18 +374,50 @@ setTradeStatus(`Sell confirmed: ${signature.slice(0, 8)}...`);
     <input placeholder="Stop-loss %" type="number" min="0" step="0.1" />
     <input placeholder="Take-profit %" type="number" min="0" step="0.1" />
 
-    <button
-      className={botEnabled ? 'toggle on' : 'toggle'}
-      onClick={() => {
-        if (!tradeMint.trim() || !tradeAmount) {
-          notify('Enter a token mint and entry amount first');
-          return;
-        }
+<button
+  className={botEnabled ? 'toggle on' : 'toggle'}
+  onClick={async () => {
+    if (botEnabled) {
+      setBotEnabled(false);
+      setEntryPrice(null);
+      setTradeStatus('Assistant paused');
+      notify('Assistant paused');
+      return;
+    }
 
-        setBotEnabled(!botEnabled);
-        notify(botEnabled ? 'Assistant paused' : 'Assistant enabled');
-      }}
-    >
+    if (!tradeMint.trim() || !tradeAmount || !stopLoss || !takeProfit) {
+      notify('Enter the token, amount, stop-loss, and take-profit first');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/price?mint=${encodeURIComponent(tradeMint.trim())}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to get token price');
+      }
+
+      const price = Number(data.price);
+
+      if (!Number.isFinite(price) || price <= 0) {
+        throw new Error('Invalid token price');
+      }
+
+      setEntryPrice(price);
+      setBotEnabled(true);
+      setTradeStatus(`Bot active — entry price: $${price}`);
+      notify('Assistant enabled');
+    } catch (error) {
+      setTradeStatus(
+        error instanceof Error ? error.message : 'Unable to start assistant'
+      );
+    }
+  }}
+>
       {botEnabled ? <Pause size={15}/> : <Play size={15}/>}
       {botEnabled ? 'Enabled' : 'Enable'}
     </button>
