@@ -264,7 +264,22 @@ setTradeStatus(`Sell confirmed: ${signature.slice(0, 8)}...`);
 
 <div className="bot-panel">
   <div>
-    <span className="eyebrow">AUTOMATION PREVIEW</span><h3>Trading assistant</h3><p>Set entry, stop-loss and take-profit rules for a future connected wallet. No orders are sent from this build.</p></div><button className={botEnabled ? 'toggle on' : 'toggle'} onClick={() => { setBotEnabled(!botEnabled); notify(botEnabled ? 'Assistant paused' : 'Assistant enabled in demo mode'); }}>{botEnabled ? <Pause size={15}/> : <Play size={15}/>} {botEnabled ? 'Enabled' : 'Enable demo'}</button></div></PageShell>}
+    <span className="eyebrow">AUTOMATED TRADING</span>
+    <h3>Trading assistant</h3>
+    <p>Set entry, stop-loss and take-profit rules for automated trading.</p>
+  </div>
+
+  <button
+    className={botEnabled ? 'toggle on' : 'toggle'}
+    onClick={() => {
+      setBotEnabled(!botEnabled);
+      notify(botEnabled ? 'Assistant paused' : 'Assistant enabled');
+    }}
+  >
+    {botEnabled ? <Pause size={15}/> : <Play size={15}/>}
+    {botEnabled ? 'Enabled' : 'Enable'}
+  </button>
+</div></PageShell>}
 
         {active === 'Activity' && <PageShell title="Activity log" subtitle="Recent events from your MoonPad workspace."><ActivityLog/></PageShell>}
 
