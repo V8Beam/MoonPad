@@ -215,7 +215,7 @@ const [tradeStatus, setTradeStatus] = useState('');
         body: JSON.stringify({
           inputMint: tradeMint.trim(),
           outputMint: 'So11111111111111111111111111111111111111112',
-          amount: Math.floor(Number(tradeAmount) * 1000000).toString(),
+amount: tradeAmount,
           userPublicKey: provider.publicKey.toString(),
         }),
       });
