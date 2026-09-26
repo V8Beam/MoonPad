@@ -266,19 +266,26 @@ setTradeStatus(`Sell confirmed: ${signature.slice(0, 8)}...`);
   <div>
     <span className="eyebrow">AUTOMATED TRADING</span>
     <h3>Trading assistant</h3>
-    <p>Set entry, stop-loss and take-profit rules for automated trading.</p>
+    <p>Configure the token and rules for automated trading.</p>
   </div>
 
-  <button
-    className={botEnabled ? 'toggle on' : 'toggle'}
-    onClick={() => {
-      setBotEnabled(!botEnabled);
-      notify(botEnabled ? 'Assistant paused' : 'Assistant enabled');
-    }}
-  >
-    {botEnabled ? <Pause size={15}/> : <Play size={15}/>}
-    {botEnabled ? 'Enabled' : 'Enable'}
-  </button>
+  <div className="trade-controls">
+    <input placeholder="Token mint address" />
+    <input placeholder="Entry amount in SOL" type="number" min="0" step="any" />
+    <input placeholder="Stop-loss %" type="number" min="0" step="0.1" />
+    <input placeholder="Take-profit %" type="number" min="0" step="0.1" />
+
+    <button
+      className={botEnabled ? 'toggle on' : 'toggle'}
+      onClick={() => {
+        setBotEnabled(!botEnabled);
+        notify(botEnabled ? 'Assistant paused' : 'Assistant enabled');
+      }}
+    >
+      {botEnabled ? <Pause size={15}/> : <Play size={15}/>}
+      {botEnabled ? 'Enabled' : 'Enable'}
+    </button>
+  </div>
 </div></PageShell>}
 
         {active === 'Activity' && <PageShell title="Activity log" subtitle="Recent events from your MoonPad workspace."><ActivityLog/></PageShell>}
