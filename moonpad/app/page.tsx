@@ -217,7 +217,7 @@ setTradeStatus(`Buy confirmed: ${signature.slice(0, 8)}...`);
         body: JSON.stringify({
           inputMint: tradeMint.trim(),
           outputMint: 'So11111111111111111111111111111111111111112',
-amount: tradeAmount,
+amount: Math.floor(Number(tradeAmount) * 1_000_000).toString(),
           userPublicKey: provider.publicKey.toString(),
         }),
       });
