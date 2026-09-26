@@ -105,6 +105,9 @@ export default function Home() {
   const [refreshingBalance, setRefreshingBalance] =
     useState(false);
 
+  const [showMobileWalletPrompt, setShowMobileWalletPrompt] =
+    useState(false);
+
   const [running, setRunning] = useState(true);
 
   const [showLaunch, setShowLaunch] =
@@ -263,7 +266,62 @@ export default function Home() {
   };
 
   const getProvider = () => {
-    return (window as any).phantom?.solana;
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return (
+      (window as any).phantom?.solana ||
+      (window as any).solana ||
+      null
+    );
+  };
+
+  const isMobileDevice = () => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return /Android|iPhone|iPad|iPod/i.test(
+      navigator.userAgent
+    );
+  };
+
+  const isProbablyPhantomMobileBrowser = () => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    const userAgent =
+      navigator.userAgent.toLowerCase();
+
+    return (
+      userAgent.includes('phantom') ||
+      Boolean(
+        (window as any).phantom?.solana
+      )
+    );
+  };
+
+  const openMoonPadInPhantom = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const pageUrl = encodeURIComponent(
+      window.location.href
+    );
+
+    const ref = encodeURIComponent(
+      window.location.origin
+    );
+
+    const phantomBrowseUrl =
+      `https://phantom.app/ul/browse/${pageUrl}?ref=${ref}`;
+
+    window.location.assign(
+      phantomBrowseUrl
+    );
   };
 
   const copyText = async (
@@ -631,6 +689,11 @@ export default function Home() {
     const provider = getProvider();
 
     if (!provider) {
+      if (isMobileDevice()) {
+        setShowMobileWalletPrompt(true);
+        return;
+      }
+
       notify(
         'Phantom wallet not found'
       );
@@ -802,8 +865,12 @@ export default function Home() {
       !provider ||
       !provider.publicKey
     ) {
+      if (isMobileDevice()) {
+        setShowMobileWalletPrompt(true);
+      }
+
       throw new Error(
-        'Connect Phantom first.'
+        'Open MoonPad inside Phantom and connect your wallet first.'
       );
     }
 
@@ -1558,6 +1625,13 @@ export default function Home() {
     ],
   ] as const;
 
+  const mobileNav = [
+    ['Dashboard', LayoutDashboard],
+    ['AI Agents', Bot],
+    ['Launch Token', Rocket],
+    ['My Tokens', CircleDollarSign],
+  ] as const;
+
   const pageTitle =
     active === 'Dashboard'
       ? 'Good morning, MoonBuilder.'
@@ -1594,6 +1668,13 @@ export default function Home() {
                     label ===
                     'Launch Token'
                   ) {
+                    if (!walletAddress) {
+                      notify(
+                        'Connect Phantom first.'
+                      );
+                      return;
+                    }
+
                     setShowLaunch(
                       true
                     );
@@ -1741,11 +1822,18 @@ export default function Home() {
                 <div className="hero-actions">
                   <button
                     className="primary"
-                    onClick={() =>
+                    onClick={() => {
+                      if (!walletAddress) {
+                        notify(
+                          'Connect Phantom first.'
+                        );
+                        return;
+                      }
+
                       setShowLaunch(
                         true
-                      )
-                    }
+                      );
+                    }}
                   >
                     <Rocket
                       size={17}
@@ -2334,7 +2422,7 @@ export default function Home() {
                       detected for this
                       wallet.
                     </span>
-                  )}
+                )}
 
                 <input
                   value={
@@ -2349,6 +2437,7 @@ export default function Home() {
                   type="number"
                   min="0"
                   step="any"
+                  inputMode="decimal"
                 />
 
                 <button
@@ -2377,6 +2466,7 @@ export default function Home() {
                   type="number"
                   min="0"
                   step="any"
+                  inputMode="decimal"
                 />
 
                 <button
@@ -2480,6 +2570,7 @@ export default function Home() {
                   type="number"
                   min="0"
                   step="any"
+                  inputMode="decimal"
                 />
 
                 <input
@@ -2495,6 +2586,7 @@ export default function Home() {
                   type="number"
                   min="0"
                   step="0.1"
+                  inputMode="decimal"
                 />
 
                 <input
@@ -2510,6 +2602,7 @@ export default function Home() {
                   type="number"
                   min="0"
                   step="0.1"
+                  inputMode="decimal"
                 />
 
                 <button
@@ -2596,7 +2689,7 @@ export default function Home() {
                   >
                     Estimated P&amp;L:{' '}
                     {estimatedPnlSol >=
-                    0
+                      0
                       ? '+'
                       : '-'}
                     {Math.abs(
@@ -2899,6 +2992,118 @@ export default function Home() {
         </footer>
       </section>
 
+      <nav className="mobile-nav">
+        {mobileNav.map(
+          ([label, Icon]) => (
+            <button
+              key={label}
+              className={
+                active === label
+                  ? 'mobile-nav-item active'
+                  : 'mobile-nav-item'
+              }
+              onClick={() => {
+                if (
+                  label ===
+                  'Launch Token'
+                ) {
+                  if (!walletAddress) {
+                    notify(
+                      'Connect Phantom first.'
+                    );
+                    return;
+                  }
+
+                  setShowLaunch(
+                    true
+                  );
+                  return;
+                }
+
+                setActive(label);
+              }}
+            >
+              <Icon size={19} />
+              <span>
+                {label === 'Launch Token'
+                  ? 'Launch'
+                  : label === 'AI Agents'
+                  ? 'Trade'
+                  : label === 'My Tokens'
+                  ? 'Tokens'
+                  : 'Home'}
+              </span>
+            </button>
+          )
+        )}
+      </nav>
+
+      {showMobileWalletPrompt && (
+        <div
+          className="mobile-wallet-backdrop"
+          onClick={() =>
+            setShowMobileWalletPrompt(
+              false
+            )
+          }
+        >
+          <div
+            className="mobile-wallet-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="mobile-wallet-icon">
+              👻
+            </div>
+
+            <span className="eyebrow">
+              MOBILE WALLET
+            </span>
+
+            <h3>
+              Connect Phantom
+            </h3>
+
+            <p>
+              iPhone Safari cannot inject
+              Phantom directly. MoonPad will
+              open this page inside Phantom's
+              secure in-app browser.
+            </p>
+
+            <button
+              className="primary mobile-open-phantom"
+              onClick={
+                openMoonPadInPhantom
+              }
+            >
+              <Wallet size={17} />
+              Open in Phantom
+            </button>
+
+            <button
+              className="secondary mobile-cancel"
+              onClick={() =>
+                setShowMobileWalletPrompt(
+                  false
+                )
+              }
+            >
+              Cancel
+            </button>
+
+            <small>
+              Your private key and recovery
+              phrase never leave Phantom.
+              MoonPad only receives your
+              public wallet address after
+              connection.
+            </small>
+          </div>
+        </div>
+      )}
+
       {showLaunch && (
         <LaunchModal
           onClose={() =>
@@ -2911,12 +3116,14 @@ export default function Home() {
           connection={
             connection
           }
-          onLaunchSuccess={({
-            name,
-            ticker,
-            mint,
-            signature,
-          }) => {
+          onLaunchSuccess={(data) => {
+            const {
+              name,
+              ticker,
+              mint,
+              signature,
+            } = data;
+
             const token: TokenItem = {
               name,
               ticker,
@@ -2956,6 +3163,441 @@ export default function Home() {
           {toast}
         </div>
       )}
+
+      <style jsx global>{`
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          min-height: 100%;
+          background: #08090d;
+        }
+
+        body {
+          overflow-x: hidden;
+          -webkit-text-size-adjust: 100%;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        button,
+        input,
+        textarea {
+          font: inherit;
+        }
+
+        button,
+        a {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        input,
+        textarea {
+          max-width: 100%;
+        }
+
+        .mobile-nav {
+          display: none;
+        }
+
+        .mobile-wallet-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          background: rgba(0, 0, 0, 0.72);
+          backdrop-filter: blur(12px);
+        }
+
+        .mobile-wallet-modal {
+          width: min(430px, 100%);
+          padding: 28px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 24px;
+          background:
+            radial-gradient(
+              circle at top,
+              rgba(147, 92, 255, 0.18),
+              transparent 48%
+            ),
+            #11131a;
+          box-shadow:
+            0 30px 100px rgba(0, 0, 0, 0.55);
+        }
+
+        .mobile-wallet-modal h3 {
+          margin: 8px 0 10px;
+          font-size: 28px;
+          line-height: 1.1;
+        }
+
+        .mobile-wallet-modal p {
+          margin: 0 0 20px;
+          color: rgba(255, 255, 255, 0.68);
+          line-height: 1.55;
+        }
+
+        .mobile-wallet-modal small {
+          display: block;
+          margin-top: 16px;
+          color: rgba(255, 255, 255, 0.42);
+          line-height: 1.45;
+          text-align: center;
+        }
+
+        .mobile-wallet-icon {
+          width: 54px;
+          height: 54px;
+          display: grid;
+          place-items: center;
+          margin-bottom: 18px;
+          border-radius: 16px;
+          background: rgba(171, 125, 255, 0.14);
+          font-size: 28px;
+        }
+
+        .mobile-open-phantom,
+        .mobile-cancel {
+          width: 100%;
+          min-height: 50px;
+          justify-content: center;
+        }
+
+        .mobile-cancel {
+          margin-top: 10px;
+        }
+
+        @media (max-width: 800px) {
+          body {
+            padding-bottom: 78px;
+          }
+
+          .shell {
+            min-height: 100vh;
+            display: block !important;
+          }
+
+          .sidebar {
+            display: none !important;
+          }
+
+          .content {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 15px 28px !important;
+            overflow-x: hidden;
+          }
+
+          .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex !important;
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 13px !important;
+            margin: 0 -15px !important;
+            padding:
+              calc(12px + env(safe-area-inset-top))
+              15px
+              12px !important;
+            background: rgba(8, 9, 13, 0.94);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid
+              rgba(255, 255, 255, 0.07);
+          }
+
+          .topbar h1 {
+            margin-top: 3px !important;
+            font-size: 24px !important;
+            line-height: 1.12 !important;
+          }
+
+          .top-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 9px !important;
+            width: 100%;
+          }
+
+          .search {
+            width: 100% !important;
+            min-height: 44px;
+          }
+
+          .wallet {
+            width: 100% !important;
+            min-height: 46px;
+            justify-content: center;
+          }
+
+          .hero {
+            display: flex !important;
+            flex-direction: column;
+            min-height: auto !important;
+            gap: 28px !important;
+            padding: 28px 0 22px !important;
+          }
+
+          .hero h2 {
+            font-size: clamp(48px, 15vw, 76px) !important;
+            line-height: 0.9 !important;
+          }
+
+          .hero p {
+            max-width: 100% !important;
+          }
+
+          .orb {
+            width: 180px !important;
+            height: 180px !important;
+            margin: 0 auto !important;
+          }
+
+          .hero-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            width: 100%;
+          }
+
+          .hero-actions button {
+            width: 100%;
+            min-height: 48px;
+            justify-content: center;
+          }
+
+          .toolbar {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 9px !important;
+          }
+
+          .stat {
+            min-width: 0 !important;
+            overflow: hidden;
+          }
+
+          .stat b {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px !important;
+          }
+
+          .section {
+            margin-top: 24px !important;
+          }
+
+          .section-head {
+            align-items: flex-start !important;
+            gap: 10px;
+          }
+
+          .section-head h3 {
+            font-size: 20px !important;
+          }
+
+          .token-grid,
+          .agent-grid,
+          .settings-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .token-list {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .token-card,
+          .token-card.large {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .token-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          .token-actions .ghost {
+            min-height: 42px;
+            justify-content: center;
+          }
+
+          .bot-panel {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 20px !important;
+            padding: 20px !important;
+          }
+
+          .trade-controls {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .trade-controls input,
+          .trade-controls button {
+            width: 100% !important;
+            min-height: 48px !important;
+          }
+
+          .trade-controls a {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .agent-card {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .activity {
+            overflow-x: auto;
+          }
+
+          .event {
+            min-width: 520px;
+          }
+
+          .page-shell {
+            padding-top: 24px !important;
+          }
+
+          .page-intro h2 {
+            font-size: 38px !important;
+          }
+
+          .modal-backdrop {
+            align-items: flex-end !important;
+            padding: 0 !important;
+          }
+
+          .modal {
+            width: 100% !important;
+            max-width: none !important;
+            max-height: 92vh !important;
+            overflow-y: auto !important;
+            border-radius: 24px 24px 0 0 !important;
+            padding:
+              22px 18px
+              calc(22px + env(safe-area-inset-bottom))
+              !important;
+          }
+
+          .modal-row {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .modal-row button,
+          .modal-row a {
+            width: 100% !important;
+            min-height: 48px;
+            justify-content: center;
+          }
+
+          .mobile-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 100;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            padding:
+              8px
+              8px
+              calc(8px + env(safe-area-inset-bottom));
+            background: rgba(12, 13, 18, 0.96);
+            backdrop-filter: blur(18px);
+            border-top: 1px solid
+              rgba(255, 255, 255, 0.09);
+          }
+
+          .mobile-nav-item {
+            min-width: 0;
+            min-height: 54px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border: 0;
+            border-radius: 13px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.48);
+          }
+
+          .mobile-nav-item span {
+            font-size: 10px;
+            font-weight: 700;
+          }
+
+          .mobile-nav-item.active {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.07);
+          }
+
+          .toast {
+            left: 15px !important;
+            right: 15px !important;
+            bottom:
+              calc(86px + env(safe-area-inset-bottom))
+              !important;
+            width: auto !important;
+            justify-content: center;
+            text-align: center;
+          }
+
+          footer {
+            padding-bottom: 18px !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .content {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+          }
+
+          .topbar {
+            margin-left: -12px !important;
+            margin-right: -12px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+          }
+
+          .toolbar {
+            grid-template-columns: 1fr !important;
+          }
+
+          .hero h2 {
+            font-size: 52px !important;
+          }
+
+          .mobile-wallet-modal {
+            padding: 22px;
+            border-radius: 22px;
+          }
+        }
+
+        @media (min-width: 801px) {
+          .mobile-wallet-backdrop {
+            display: none;
+          }
+        }
+      `}</style>
     </main>
   );
 }
@@ -3650,7 +4292,9 @@ function LaunchModal({
                   const provider =
                     (window as any)
                       .phantom
-                      ?.solana;
+                      ?.solana ||
+                    (window as any)
+                      .solana;
 
                   if (
                     !provider ||
