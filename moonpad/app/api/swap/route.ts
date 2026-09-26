@@ -23,7 +23,11 @@ export async function POST(request: Request) {
     }
 
     const quoteResponse = await fetch(
-      `https://api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(inputMint)}&outputMint=${encodeURIComponent(outputMint)}&amount=${encodeURIComponent(amount)}&slippageBps=100`,
+      `https://api.jup.ag/swap/v1/quote?inputMint=${encodeURIComponent(
+        inputMint
+      )}&outputMint=${encodeURIComponent(
+        outputMint
+      )}&amount=${encodeURIComponent(amount)}&slippageBps=100`,
       {
         headers: {
           'x-api-key': apiKey,
@@ -33,6 +37,7 @@ export async function POST(request: Request) {
 
     if (!quoteResponse.ok) {
       const errorText = await quoteResponse.text();
+
       return NextResponse.json(
         { error: `Jupiter quote failed: ${errorText}` },
         { status: quoteResponse.status }
@@ -59,6 +64,7 @@ export async function POST(request: Request) {
 
     if (!swapResponse.ok) {
       const errorText = await swapResponse.text();
+
       return NextResponse.json(
         { error: `Jupiter swap failed: ${errorText}` },
         { status: swapResponse.status }
