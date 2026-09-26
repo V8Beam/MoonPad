@@ -270,14 +270,32 @@ setTradeStatus(`Sell confirmed: ${signature.slice(0, 8)}...`);
   </div>
 
   <div className="trade-controls">
-    <input placeholder="Token mint address" />
-    <input placeholder="Entry amount in SOL" type="number" min="0" step="any" />
+    <input
+      value={tradeMint}
+      onChange={(e) => setTradeMint(e.target.value)}
+      placeholder="Token mint address"
+    />
+
+    <input
+      value={tradeAmount}
+      onChange={(e) => setTradeAmount(e.target.value)}
+      placeholder="Entry amount in SOL"
+      type="number"
+      min="0"
+      step="any"
+    />
+
     <input placeholder="Stop-loss %" type="number" min="0" step="0.1" />
     <input placeholder="Take-profit %" type="number" min="0" step="0.1" />
 
     <button
       className={botEnabled ? 'toggle on' : 'toggle'}
       onClick={() => {
+        if (!tradeMint.trim() || !tradeAmount) {
+          notify('Enter a token mint and entry amount first');
+          return;
+        }
+
         setBotEnabled(!botEnabled);
         notify(botEnabled ? 'Assistant paused' : 'Assistant enabled');
       }}
