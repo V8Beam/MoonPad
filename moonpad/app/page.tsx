@@ -173,12 +173,14 @@ const [tradeStatus, setTradeStatus] = useState('');
 
       const signed = await provider.signTransaction(transaction);
 
-      const signature = await connection.sendRawTransaction(
-        signed.serialize(),
-        { maxRetries: 2 }
-      );
+const signature = await connection.sendRawTransaction(
+  signed.serialize(),
+  { maxRetries: 2 }
+);
 
-      setTradeStatus(`Buy submitted: ${signature.slice(0, 8)}...`);
+await connection.confirmTransaction(signature, 'confirmed');
+
+setTradeStatus(`Buy confirmed: ${signature.slice(0, 8)}...`);
     } catch (error) {
       console.error('MoonPad buy error:', error);
       setTradeStatus(
