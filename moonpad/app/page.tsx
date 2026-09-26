@@ -376,9 +376,14 @@ transaction.feePayer = new PublicKey(provider.publicKey.toString());
 transaction.partialSign(mintKeypair);
 
 const signed = await provider.signTransaction(transaction);
-const signature = await connection.sendRawTransaction(signed.serialize());
+const signature = await connection.sendRawTransaction(
+  signed.serialize(),
+  { maxRetries: 2 }
+);
 
-onNotify(`Launch submitted: ${signature.slice(0, 8)}...`);
+await connection.confirmTransaction(signature, 'confirmed');
+
+onNotify(`Launch confirmed: ${signature.slice(0, 8)}...`);
   
     } catch (error) {
   console.error('MoonPad launch error:', error);
