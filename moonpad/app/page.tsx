@@ -270,7 +270,7 @@ setTradeStatus(`Sell confirmed: ${signature.slice(0, 8)}...`);
 
         {active === 'Settings' && <PageShell title="Settings" subtitle="Workspace preferences and connection controls."><div className="settings-grid"><div className="setting"><Gauge size={18}/><div><b>Network</b><span>Solana · Mainnet</span></div></div><div className="setting"><Wallet size={18}/><div><b>Wallet</b><span>{connected ? '7xK...9Qm connected' : 'No wallet connected'}</span></div></div><div className="setting"><Zap size={18}/><div><b>Execution</b><span>Real transactions require Phantom approval</span></div></div></div></PageShell>}
 
-        <footer>MoonPad prototype · No real transactions are executed in this build.</footer>
+<footer>MoonPad · Solana Mainnet</footer>
       </section>
 
       {showLaunch && <LaunchModal onClose={() => setShowLaunch(false)} onNotify={notify} walletAddress={walletAddress} connection={connection}/>} 
