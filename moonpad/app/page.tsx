@@ -116,13 +116,13 @@ const [tradeStatus, setTradeStatus] = useState('');
     />
 
     <input
-      value={tradeAmount}
-      onChange={(e) => setTradeAmount(e.target.value)}
-      placeholder="SOL amount"
-      type="number"
-      min="0"
-      step="0.001"
-    />
+  value={tradeAmount}
+  onChange={(e) => setTradeAmount(e.target.value)}
+  placeholder="Amount"
+  type="number"
+  min="0"
+  step="any"
+/>
 
     <button
   onClick={async () => {
