@@ -423,6 +423,6 @@ onNotify(`Launch confirmed: ${signature.slice(0, 8)}...`);
   }}
 >
   <Rocket size={16}/> Review Launch
-</button></div><p className="note">Prototype mode: this previews the launch flow only.</p></div></div>
+</button></div><p className="note">Your token launch will be submitted to Solana Mainnet after Phantom approval.</p></div></div>
 }
 
