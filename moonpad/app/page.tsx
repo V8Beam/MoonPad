@@ -23,6 +23,7 @@ import {
   Rocket,
   Search,
   Settings,
+  Share2,
   Sparkles,
   TrendingUp,
   Wallet,
@@ -36,7 +37,19 @@ const SOL_MINT =
 const SOLANA_RPC =
   'https://api.mainnet-beta.solana.com';
 
-const STATIC_TOKENS = [
+type TokenItem = {
+  name: string;
+  ticker: string;
+  mc: string;
+  change: string;
+  holders: string;
+  status: string;
+  mint?: string;
+  signature?: string;
+  createdAt?: string;
+};
+
+const demoTokens: TokenItem[] = [
   {
     name: 'Moon',
     ticker: '$MOON',
@@ -44,7 +57,6 @@ const STATIC_TOKENS = [
     change: '+18.4%',
     holders: '2,481',
     status: 'LIVE',
-    mint: '',
   },
   {
     name: 'Lunar Doge',
@@ -53,7 +65,6 @@ const STATIC_TOKENS = [
     change: '+7.2%',
     holders: '812',
     status: 'LIVE',
-    mint: '',
   },
   {
     name: 'MoonCat',
@@ -62,37 +73,13 @@ const STATIC_TOKENS = [
     change: '+3.9%',
     holders: '391',
     status: 'WATCH',
-    mint: '',
   },
 ];
-
-type TokenRecord = {
-  name: string;
-  ticker: string;
-  mc: string;
-  change: string;
-  holders: string;
-  status: string;
-  mint: string;
-  image?: string;
-  description?: string;
-  signature?: string;
-  createdAt?: string;
-  watched?: boolean;
-};
 
 type ActivityEvent = {
   time: string;
   actor: string;
   action: string;
-};
-
-type TradeRecord = {
-  signature: string;
-  action: 'Buy' | 'Sell';
-  mint: string;
-  amount: string;
-  time: string;
 };
 
 export default function Home() {
@@ -101,47 +88,39 @@ export default function Home() {
     []
   );
 
-  const [active, setActive] =
-    useState('Dashboard');
+  const [active, setActive] = useState('Dashboard');
 
-  const [connected, setConnected] =
-    useState(false);
-
-  const [walletAddress, setWalletAddress] =
-    useState('');
-
+  const [connected, setConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
   const [solBalance, setSolBalance] =
     useState<number | null>(null);
+  const [connecting, setConnecting] =
+    useState(false);
 
-  const [running, setRunning] =
-    useState(true);
+  const [running, setRunning] = useState(true);
 
   const [showLaunch, setShowLaunch] =
     useState(false);
 
-  const [search, setSearch] =
-    useState('');
+  const [search, setSearch] = useState('');
 
-  const [toast, setToast] =
-    useState('');
+  const [toast, setToast] = useState('');
 
-  const [tradeMint, setTradeMint] =
-    useState('');
-
+  const [tradeMint, setTradeMint] = useState('');
   const [tradeAmount, setTradeAmount] =
     useState('');
-
   const [sellAmount, setSellAmount] =
     useState('');
 
   const [stopLoss, setStopLoss] =
     useState('');
-
   const [takeProfit, setTakeProfit] =
     useState('');
 
   const [tradeStatus, setTradeStatus] =
     useState('');
+  const [tradeLoading, setTradeLoading] =
+    useState(false);
 
   const [lastSignature, setLastSignature] =
     useState('');
@@ -169,149 +148,42 @@ export default function Home() {
   const [watchPrice, setWatchPrice] =
     useState<number | null>(null);
 
-  const [watchMint, setWatchMint] =
-    useState('');
-
-  const [copyStatus, setCopyStatus] =
-    useState('');
-
-  const [tradeLoading, setTradeLoading] =
-    useState<'Buy' | 'Sell' | null>(null);
+  const [createdTokens, setCreatedTokens] =
+    useState<TokenItem[]>([]);
 
   const [activity, setActivity] =
-    useState<ActivityEvent[]>([]);
-
-  const [createdTokens, setCreatedTokens] =
-    useState<TokenRecord[]>([]);
-
-  const [trades, setTrades] =
-    useState<TradeRecord[]>([]);
-
-  const [launchResult, setLaunchResult] =
-    useState<{
-      mint: string;
-      signature: string;
-      name: string;
-      ticker: string;
-    } | null>(null);
-
-  const [isClient, setIsClient] =
-    useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-
-    try {
-      const savedActivity =
-        localStorage.getItem(
-          'moonpad_activity'
-        );
-
-      const savedTokens =
-        localStorage.getItem(
-          'moonpad_created_tokens'
-        );
-
-      const savedTrades =
-        localStorage.getItem(
-          'moonpad_trades'
-        );
-
-      if (savedActivity) {
-        setActivity(
-          JSON.parse(savedActivity)
-        );
-      } else {
-        setActivity([
-          {
-            time: '12:42',
-            actor: 'Agent #001',
-            action: 'market data updated',
-          },
-          {
-            time: '12:39',
-            actor: 'Wallet',
-            action:
-              'connected successfully',
-          },
-          {
-            time: '12:34',
-            actor: 'Agent #002',
-            action:
-              'started community monitoring',
-          },
-          {
-            time: '12:28',
-            actor: '$MOON',
-            action:
-              'holder count crossed 2,400',
-          },
-        ]);
-      }
-
-      if (savedTokens) {
-        setCreatedTokens(
-          JSON.parse(savedTokens)
-        );
-      }
-
-      if (savedTrades) {
-        setTrades(
-          JSON.parse(savedTrades)
-        );
-      }
-    } catch {
-      setActivity([]);
-      setCreatedTokens([]);
-      setTrades([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isClient) return;
-
-    try {
-      localStorage.setItem(
-        'moonpad_activity',
-        JSON.stringify(activity)
-      );
-    } catch {}
-  }, [activity, isClient]);
-
-  useEffect(() => {
-    if (!isClient) return;
-
-    try {
-      localStorage.setItem(
-        'moonpad_created_tokens',
-        JSON.stringify(createdTokens)
-      );
-    } catch {}
-  }, [createdTokens, isClient]);
-
-  useEffect(() => {
-    if (!isClient) return;
-
-    try {
-      localStorage.setItem(
-        'moonpad_trades',
-        JSON.stringify(trades)
-      );
-    } catch {}
-  }, [trades, isClient]);
+    useState<ActivityEvent[]>([
+      {
+        time: '12:42',
+        actor: 'Agent #001',
+        action: 'market data updated',
+      },
+      {
+        time: '12:39',
+        actor: 'Wallet',
+        action: 'connected successfully',
+      },
+      {
+        time: '12:34',
+        actor: 'Agent #002',
+        action: 'started community monitoring',
+      },
+      {
+        time: '12:28',
+        actor: '$MOON',
+        action: 'holder count crossed 2,400',
+      },
+    ]);
 
   const allTokens = useMemo(
-    () => [
-      ...createdTokens,
-      ...STATIC_TOKENS,
-    ],
+    () => [...createdTokens, ...demoTokens],
     [createdTokens]
   );
 
   const filteredTokens = useMemo(
     () =>
       allTokens.filter((t) =>
-        `${t.name} ${t.ticker} ${t.mint}`
+        `${t.name} ${t.ticker} ${t.mint || ''}`
           .toLowerCase()
           .includes(search.toLowerCase())
       ),
@@ -332,26 +204,46 @@ export default function Home() {
   ) => {
     const now = new Date();
 
-    const time =
-      now.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+    const time = now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
-    setActivity((previous) =>
-      [
+    setActivity((previous) => {
+      const next = [
         {
           time,
           actor,
           action,
         },
         ...previous,
-      ].slice(0, 20)
-    );
+      ].slice(0, 20);
+
+      try {
+        localStorage.setItem(
+          'moonpad_activity',
+          JSON.stringify(next)
+        );
+      } catch {}
+
+      return next;
+    });
   };
 
   const getProvider = () => {
     return (window as any).phantom?.solana;
+  };
+
+  const copyText = async (
+    value: string,
+    message = 'Copied'
+  ) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      notify(message);
+    } catch {
+      notify('Copy failed');
+    }
   };
 
   const refreshBalance = async (
@@ -361,7 +253,9 @@ export default function Home() {
       const target =
         address || walletAddress;
 
-      if (!target) return;
+      if (!target) {
+        return;
+      }
 
       const publicKey =
         new PublicKey(target);
@@ -381,6 +275,38 @@ export default function Home() {
   };
 
   useEffect(() => {
+    try {
+      const savedTokens =
+        localStorage.getItem(
+          'moonpad_created_tokens'
+        );
+
+      if (savedTokens) {
+        const parsed =
+          JSON.parse(savedTokens);
+
+        if (Array.isArray(parsed)) {
+          setCreatedTokens(parsed);
+        }
+      }
+
+      const savedActivity =
+        localStorage.getItem(
+          'moonpad_activity'
+        );
+
+      if (savedActivity) {
+        const parsed =
+          JSON.parse(savedActivity);
+
+        if (Array.isArray(parsed)) {
+          setActivity(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     const provider = getProvider();
 
     if (
@@ -392,8 +318,69 @@ export default function Home() {
 
       setConnected(true);
       setWalletAddress(address);
-
       refreshBalance(address);
+    }
+
+    if (
+      provider?.on
+    ) {
+      const handleAccountChanged = (
+        publicKey: PublicKey | null
+      ) => {
+        if (!publicKey) {
+          setConnected(false);
+          setWalletAddress('');
+          setSolBalance(null);
+          return;
+        }
+
+        const address =
+          publicKey.toString();
+
+        setConnected(true);
+        setWalletAddress(address);
+        refreshBalance(address);
+
+        addActivity(
+          'Wallet',
+          'account changed'
+        );
+      };
+
+      const handleDisconnect = () => {
+        setConnected(false);
+        setWalletAddress('');
+        setSolBalance(null);
+
+        addActivity(
+          'Wallet',
+          'disconnected'
+        );
+      };
+
+      provider.on(
+        'accountChanged',
+        handleAccountChanged
+      );
+
+      provider.on(
+        'disconnect',
+        handleDisconnect
+      );
+
+      return () => {
+        try {
+          provider.removeListener(
+            'accountChanged',
+            handleAccountChanged
+          );
+
+          provider.removeListener(
+            'disconnect',
+            handleDisconnect
+          );
+        } catch {}
+      };
     }
   }, []);
 
@@ -412,18 +399,18 @@ export default function Home() {
         );
       }, 15000);
 
-    return () =>
+    return () => {
       window.clearInterval(
         interval
       );
+    };
   }, [
     connected,
     walletAddress,
   ]);
 
   const connectWallet = async () => {
-    const provider =
-      getProvider();
+    const provider = getProvider();
 
     if (!provider) {
       notify(
@@ -432,7 +419,13 @@ export default function Home() {
       return;
     }
 
+    if (connecting) {
+      return;
+    }
+
     try {
+      setConnecting(true);
+
       const response =
         await provider.connect();
 
@@ -459,69 +452,43 @@ export default function Home() {
       notify(
         'Wallet connection cancelled'
       );
+    } finally {
+      setConnecting(false);
     }
   };
 
-  const disconnectWallet =
-    async () => {
-      const provider =
-        getProvider();
+  const disconnectWallet = async () => {
+    const provider = getProvider();
 
-      try {
-        await provider?.disconnect();
-      } catch {}
-
-      setConnected(false);
-      setWalletAddress('');
-      setSolBalance(null);
-
-      addActivity(
-        'Wallet',
-        'disconnected'
-      );
-
-      notify(
-        'Wallet disconnected'
-      );
-    };
-
-  const copyText = async (
-    value: string,
-    label: string
-  ) => {
     try {
-      await navigator.clipboard.writeText(
-        value
-      );
+      await provider?.disconnect();
+    } catch {}
 
-      setCopyStatus(label);
+    setConnected(false);
+    setWalletAddress('');
+    setSolBalance(null);
 
-      window.setTimeout(() => {
-        setCopyStatus('');
-      }, 1800);
+    addActivity(
+      'Wallet',
+      'disconnected'
+    );
 
-      notify(
-        `${label} copied`
-      );
-    } catch {
-      notify(
-        'Unable to copy'
-      );
-    }
+    notify(
+      'Wallet disconnected'
+    );
   };
 
   const getPrice = async (
     mint: string
   ) => {
-    const response =
-      await fetch(
-        `/api/price?mint=${encodeURIComponent(
-          mint
-        )}`,
-        {
-          cache: 'no-store',
-        }
-      );
+    const response = await fetch(
+      `/api/price?mint=${encodeURIComponent(
+        mint
+      )}`,
+      {
+        cache: 'no-store',
+      }
+    );
 
     const data =
       await response.json();
@@ -553,16 +520,13 @@ export default function Home() {
     outputMint,
     amount,
     action,
-    displayAmount,
   }: {
     inputMint: string;
     outputMint: string;
     amount: string;
     action: 'Buy' | 'Sell';
-    displayAmount: string;
   }) => {
-    const provider =
-      getProvider();
+    const provider = getProvider();
 
     if (
       !provider ||
@@ -584,31 +548,30 @@ export default function Home() {
       );
     }
 
-    setTradeLoading(action);
+    setTradeLoading(true);
 
     setTradeStatus(
       `Preparing ${action.toLowerCase()} transaction...`
     );
 
     try {
-      const response =
-        await fetch(
-          '/api/swap',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type':
-                'application/json',
-            },
-            body: JSON.stringify({
-              inputMint,
-              outputMint,
-              amount,
-              userPublicKey:
-                provider.publicKey.toString(),
-            }),
-          }
-        );
+      const response = await fetch(
+        '/api/swap',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
+          },
+          body: JSON.stringify({
+            inputMint,
+            outputMint,
+            amount,
+            userPublicKey:
+              provider.publicKey.toString(),
+          }),
+        }
+      );
 
       const data =
         await response.json();
@@ -620,9 +583,7 @@ export default function Home() {
         );
       }
 
-      if (
-        !data.swapTransaction
-      ) {
+      if (!data.swapTransaction) {
         throw new Error(
           'Swap transaction was not returned.'
         );
@@ -648,10 +609,6 @@ export default function Home() {
           transaction
         );
 
-      setTradeStatus(
-        'Transaction signed — submitting to Solana...'
-      );
-
       const signature =
         await connection.sendRawTransaction(
           signed.serialize(),
@@ -659,10 +616,6 @@ export default function Home() {
             maxRetries: 2,
           }
         );
-
-      setTradeStatus(
-        'Transaction submitted — waiting for confirmation...'
-      );
 
       await connection.confirmTransaction(
         signature,
@@ -680,32 +633,6 @@ export default function Home() {
         )}...`
       );
 
-      const tradeRecord: TradeRecord =
-        {
-          signature,
-          action,
-          mint: outputMint === SOL_MINT
-            ? inputMint
-            : outputMint,
-          amount: displayAmount,
-          time:
-            new Date().toLocaleTimeString(
-              [],
-              {
-                hour: '2-digit',
-                minute: '2-digit',
-              }
-            ),
-        };
-
-      setTrades(
-        (previous) =>
-          [
-            tradeRecord,
-            ...previous,
-          ].slice(0, 20)
-      );
-
       addActivity(
         'Trade',
         `${action.toLowerCase()} confirmed`
@@ -719,207 +646,194 @@ export default function Home() {
 
       return signature;
     } finally {
-      setTradeLoading(null);
+      setTradeLoading(false);
     }
   };
 
-  const handleBuy =
-    async () => {
-      try {
-        if (
-          !tradeMint.trim()
-        ) {
-          throw new Error(
-            'Enter a token mint address.'
-          );
-        }
-
-        if (
-          !tradeAmount ||
-          Number(tradeAmount) <= 0
-        ) {
-          throw new Error(
-            'Enter a valid SOL amount.'
-          );
-        }
-
-        if (
-          solBalance !== null &&
-          Number(tradeAmount) >
-            solBalance
-        ) {
-          throw new Error(
-            'Buy amount is greater than your current SOL balance.'
-          );
-        }
-
-        const lamports =
-          Math.floor(
-            Number(tradeAmount) *
-              1_000_000_000
-          );
-
-        await sendSwap({
-          inputMint: SOL_MINT,
-          outputMint:
-            tradeMint.trim(),
-          amount:
-            lamports.toString(),
-          action: 'Buy',
-          displayAmount:
-            `${tradeAmount} SOL`,
-        });
-      } catch (error) {
-        console.error(
-          'MoonPad buy error:',
-          error
-        );
-
-        setTradeStatus(
-          error instanceof Error
-            ? error.message
-            : 'Buy failed.'
-        );
-
-        setTradeLoading(null);
-      }
-    };
-
-  const handleSell =
-    async () => {
-      try {
-        if (
-          !tradeMint.trim()
-        ) {
-          throw new Error(
-            'Enter a token mint address.'
-          );
-        }
-
-        if (
-          !sellAmount ||
-          Number(sellAmount) <= 0
-        ) {
-          throw new Error(
-            'Enter the token amount in base units.'
-          );
-        }
-
-        await sendSwap({
-          inputMint:
-            tradeMint.trim(),
-          outputMint: SOL_MINT,
-          amount:
-            sellAmount.trim(),
-          action: 'Sell',
-          displayAmount:
-            `${sellAmount} token base units`,
-        });
-      } catch (error) {
-        console.error(
-          'MoonPad sell error:',
-          error
-        );
-
-        setTradeStatus(
-          error instanceof Error
-            ? error.message
-            : 'Sell failed.'
-        );
-
-        setTradeLoading(null);
-      }
-    };
-
-  const startBot =
-    async () => {
+  const handleBuy = async () => {
+    try {
       if (!connected) {
-        notify(
+        throw new Error(
           'Connect Phantom first.'
         );
-        return;
       }
 
       if (!tradeMint.trim()) {
-        notify(
-          'Enter a token mint.'
+        throw new Error(
+          'Enter a token mint address.'
         );
-        return;
       }
 
       if (
         !tradeAmount ||
         Number(tradeAmount) <= 0
       ) {
-        notify(
-          'Enter the entry amount.'
+        throw new Error(
+          'Enter a valid SOL amount.'
         );
-        return;
+      }
+
+      const lamports = Math.floor(
+        Number(tradeAmount) *
+          1_000_000_000
+      );
+
+      await sendSwap({
+        inputMint: SOL_MINT,
+        outputMint:
+          tradeMint.trim(),
+        amount:
+          lamports.toString(),
+        action: 'Buy',
+      });
+    } catch (error) {
+      console.error(
+        'MoonPad buy error:',
+        error
+      );
+
+      setTradeStatus(
+        error instanceof Error
+          ? error.message
+          : 'Buy failed.'
+      );
+
+      setTradeLoading(false);
+    }
+  };
+
+  const handleSell = async () => {
+    try {
+      if (!connected) {
+        throw new Error(
+          'Connect Phantom first.'
+        );
+      }
+
+      if (!tradeMint.trim()) {
+        throw new Error(
+          'Enter a token mint address.'
+        );
       }
 
       if (
-        !stopLoss ||
-        Number(stopLoss) <= 0
+        !sellAmount ||
+        Number(sellAmount) <= 0
       ) {
-        notify(
-          'Enter a stop-loss percentage.'
-        );
-        return;
-      }
-
-      if (
-        !takeProfit ||
-        Number(takeProfit) <= 0
-      ) {
-        notify(
-          'Enter a take-profit percentage.'
-        );
-        return;
-      }
-
-      try {
-        setTradeStatus(
-          'Reading current token price...'
-        );
-
-        const price =
-          await getPrice(
-            tradeMint.trim()
-          );
-
-        setEntryPrice(price);
-        setCurrentPrice(price);
-        setChangePercent(0);
-        setTriggered(null);
-        setBotEnabled(true);
-
-        addActivity(
-          'Trading Assistant',
-          `started monitoring ${tradeMint
-            .trim()
-            .slice(
-              0,
-              8
-            )}...`
-        );
-
-        setTradeStatus(
-          `Assistant active — entry price: $${formatPrice(
-            price
-          )}`
-        );
-
-        notify(
-          'Trading assistant enabled'
-        );
-      } catch (error) {
-        setTradeStatus(
-          error instanceof Error
-            ? error.message
-            : 'Unable to start assistant.'
+        throw new Error(
+          'Enter the token amount in base units.'
         );
       }
-    };
+
+      await sendSwap({
+        inputMint:
+          tradeMint.trim(),
+        outputMint: SOL_MINT,
+        amount:
+          sellAmount.trim(),
+        action: 'Sell',
+      });
+    } catch (error) {
+      console.error(
+        'MoonPad sell error:',
+        error
+      );
+
+      setTradeStatus(
+        error instanceof Error
+          ? error.message
+          : 'Sell failed.'
+      );
+
+      setTradeLoading(false);
+    }
+  };
+
+  const startBot = async () => {
+    if (!connected) {
+      notify(
+        'Connect Phantom first.'
+      );
+      return;
+    }
+
+    if (!tradeMint.trim()) {
+      notify(
+        'Enter a token mint.'
+      );
+      return;
+    }
+
+    if (
+      !tradeAmount ||
+      Number(tradeAmount) <= 0
+    ) {
+      notify(
+        'Enter the entry amount.'
+      );
+      return;
+    }
+
+    if (
+      !stopLoss ||
+      Number(stopLoss) <= 0
+    ) {
+      notify(
+        'Enter a stop-loss percentage.'
+      );
+      return;
+    }
+
+    if (
+      !takeProfit ||
+      Number(takeProfit) <= 0
+    ) {
+      notify(
+        'Enter a take-profit percentage.'
+      );
+      return;
+    }
+
+    try {
+      setTradeStatus(
+        'Reading current token price...'
+      );
+
+      const price =
+        await getPrice(
+          tradeMint.trim()
+        );
+
+      setEntryPrice(price);
+      setCurrentPrice(price);
+      setChangePercent(0);
+      setTriggered(null);
+      setBotEnabled(true);
+
+      addActivity(
+        'Trading Assistant',
+        `started monitoring ${tradeMint
+          .trim()
+          .slice(0, 8)}...`
+      );
+
+      setTradeStatus(
+        `Bot active — entry price: $${formatPrice(
+          price
+        )}`
+      );
+
+      notify(
+        'Trading assistant enabled'
+      );
+    } catch (error) {
+      setTradeStatus(
+        error instanceof Error
+          ? error.message
+          : 'Unable to start assistant.'
+      );
+    }
+  };
 
   const stopBot = () => {
     setBotEnabled(false);
@@ -1044,7 +958,7 @@ export default function Home() {
           }
 
           setTradeStatus(
-            `Assistant active: ${
+            `Bot active: ${
               percent >= 0
                 ? '+'
                 : ''
@@ -1073,7 +987,6 @@ export default function Home() {
 
     return () => {
       stopped = true;
-
       window.clearInterval(
         interval
       );
@@ -1096,22 +1009,19 @@ export default function Home() {
       }
 
       try {
-        const mint =
-          tradeMint.trim();
-
         const price =
-          await getPrice(mint);
+          await getPrice(
+            tradeMint.trim()
+          );
 
-        setWatchMint(mint);
         setWatchPrice(price);
         setWatching(true);
 
         addActivity(
           'Market Monitor',
-          `price updated for ${mint.slice(
-            0,
-            8
-          )}...`
+          `price updated for ${tradeMint
+            .trim()
+            .slice(0, 8)}...`
         );
 
         notify(
@@ -1126,71 +1036,31 @@ export default function Home() {
       }
     };
 
-  const watchCurrentToken =
-    () => {
-      if (!tradeMint.trim()) {
-        notify(
-          'Enter a token mint first.'
-        );
-        return;
+  const saveCreatedToken = (
+    token: TokenItem
+  ) => {
+    setCreatedTokens(
+      (previous) => {
+        const next = [
+          token,
+          ...previous.filter(
+            (item) =>
+              item.mint !==
+              token.mint
+          ),
+        ];
+
+        try {
+          localStorage.setItem(
+            'moonpad_created_tokens',
+            JSON.stringify(next)
+          );
+        } catch {}
+
+        return next;
       }
-
-      const mint =
-        tradeMint.trim();
-
-      setCreatedTokens(
-        (previous) =>
-          previous.map((token) =>
-            token.mint === mint
-              ? {
-                  ...token,
-                  watched:
-                    true,
-                }
-              : token
-          )
-      );
-
-      addActivity(
-        'Watchlist',
-        `watching ${mint.slice(
-          0,
-          8
-        )}...`
-      );
-
-      notify(
-        'Token added to watchlist'
-      );
-    };
-
-  const triggerPrice =
-    entryPrice !== null
-      ? {
-          stop:
-            Number(stopLoss) > 0
-              ? entryPrice *
-                (1 -
-                  Number(
-                    stopLoss
-                  ) /
-                    100)
-              : null,
-          target:
-            Number(takeProfit) >
-            0
-              ? entryPrice *
-                (1 +
-                  Number(
-                    takeProfit
-                  ) /
-                    100)
-              : null,
-        }
-      : {
-          stop: null,
-          target: null,
-        };
+    );
+  };
 
   const nav = [
     [
@@ -1234,7 +1104,6 @@ export default function Home() {
 
           <div>
             <b>MoonPad</b>
-
             <span>
               AI token platform
             </span>
@@ -1283,9 +1152,7 @@ export default function Home() {
         <div className="side-card">
           <Sparkles size={18} />
 
-          <b>
-            MoonPad AI
-          </b>
+          <b>MoonPad AI</b>
 
           <p>
             Your agent workspace
@@ -1355,10 +1222,15 @@ export default function Home() {
                   ? disconnectWallet
                   : connectWallet
               }
+              disabled={
+                connecting
+              }
             >
               <Wallet size={17} />
 
-              {connected
+              {connecting
+                ? 'Connecting...'
+                : connected
                 ? `${walletAddress.slice(
                     0,
                     4
@@ -1469,11 +1341,11 @@ export default function Home() {
 
               <div className="stat">
                 <small>
-                  Network
+                  Tokens created
                 </small>
 
                 <b>
-                  Solana Mainnet
+                  {createdTokens.length}
                 </b>
               </div>
 
@@ -1504,8 +1376,8 @@ export default function Home() {
                   </h3>
 
                   <p>
-                    Tokens launched or
-                    tracked in MoonPad
+                    Live portfolio
+                    activity
                   </p>
                 </div>
 
@@ -1527,19 +1399,19 @@ export default function Home() {
               <div className="token-grid">
                 {filteredTokens
                   .slice(0, 2)
-                  .map((token) => (
+                  .map((t) => (
                     <TokenCard
                       key={
-                        token.mint ||
-                        token.ticker
+                        t.mint ||
+                        t.ticker
                       }
-                      t={token}
+                      t={t}
                       onCopy={
-                        token.mint
+                        t.mint
                           ? () =>
                               copyText(
-                                token.mint,
-                                'Mint address'
+                                t.mint!,
+                                'Mint copied'
                               )
                           : undefined
                       }
@@ -1556,9 +1428,8 @@ export default function Home() {
                   </h3>
 
                   <p>
-                    Check any Solana
-                    token using Jupiter
-                    pricing
+                    Check a Solana
+                    token's live price
                   </p>
                 </div>
               </div>
@@ -1576,7 +1447,8 @@ export default function Home() {
                   <p>
                     Enter any Solana
                     token mint to read
-                    its current price.
+                    its current Jupiter
+                    price.
                   </p>
                 </div>
 
@@ -1601,15 +1473,6 @@ export default function Home() {
                     Check Price
                   </button>
 
-                  <button
-                    className="secondary"
-                    onClick={
-                      watchCurrentToken
-                    }
-                  >
-                    Watch Token
-                  </button>
-
                   {watching &&
                     watchPrice !==
                       null && (
@@ -1620,12 +1483,6 @@ export default function Home() {
                         )}
                       </span>
                     )}
-
-                  {watchMint && (
-                    <small>
-                      {watchMint}
-                    </small>
-                  )}
                 </div>
               </div>
             </section>
@@ -1705,22 +1562,12 @@ export default function Home() {
           'My Tokens' && (
           <PageShell
             title="Token portfolio"
-            subtitle="Everything launched or watched from your MoonPad workspace."
+            subtitle="Everything created or watched in your MoonPad workspace."
           >
             <div className="toolbar">
               <div className="stat">
                 <small>
-                  Created
-                </small>
-
-                <b>
-                  {createdTokens.length}
-                </b>
-              </div>
-
-              <div className="stat">
-                <small>
-                  Tracked
+                  Total tracked
                 </small>
 
                 <b>
@@ -1730,71 +1577,101 @@ export default function Home() {
 
               <div className="stat">
                 <small>
-                  Transactions
+                  Created by you
                 </small>
 
                 <b>
-                  {trades.length}
+                  {createdTokens.length}
+                </b>
+              </div>
+
+              <div className="stat">
+                <small>
+                  Network
+                </small>
+
+                <b>
+                  Solana Mainnet
                 </b>
               </div>
             </div>
 
             {createdTokens.length >
-            0 ? (
+              0 && (
+              <div className="section">
+                <div className="section-head">
+                  <div>
+                    <h3>
+                      Your launches
+                    </h3>
+
+                    <p>
+                      Tokens launched
+                      through MoonPad
+                    </p>
+                  </div>
+                </div>
+
+                <div className="token-list">
+                  {createdTokens.map(
+                    (t) => (
+                      <TokenCard
+                        key={
+                          t.mint
+                        }
+                        t={t}
+                        large
+                        onCopy={() =>
+                          copyText(
+                            t.mint!,
+                            'Mint copied'
+                          )
+                        }
+                      />
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="section">
+              <div className="section-head">
+                <div>
+                  <h3>
+                    Tracked tokens
+                  </h3>
+
+                  <p>
+                    MoonPad market
+                    workspace
+                  </p>
+                </div>
+              </div>
+
               <div className="token-list">
-                {createdTokens.map(
-                  (token) => (
+                {filteredTokens.map(
+                  (t) => (
                     <TokenCard
                       key={
-                        token.mint
+                        t.mint ||
+                        t.ticker
                       }
-                      t={token}
+                      t={t}
                       large
-                      onCopy={() =>
-                        copyText(
-                          token.mint,
-                          'Mint address'
-                        )
+                      onCopy={
+                        t.mint
+                          ? () =>
+                              copyText(
+                                t.mint!,
+                                'Mint copied'
+                              )
+                          : undefined
                       }
                     />
                   )
                 )}
               </div>
-            ) : (
-              <div className="bot-panel">
-                <div>
-                  <span className="eyebrow">
-                    NO LAUNCHES YET
-                  </span>
-
-                  <h3>
-                    Launch your first
-                    token
-                  </h3>
-
-                  <p>
-                    Your successfully
-                    launched tokens will
-                    appear here
-                    automatically.
-                  </p>
-                </div>
-
-                <button
-                  className="primary"
-                  onClick={() =>
-                    setShowLaunch(
-                      true
-                    )
-                  }
-                >
-                  <Rocket
-                    size={16}
-                  />
-                  Launch Token
-                </button>
-              </div>
-            )}
+            </div>
 
             {lastSignature && (
               <div className="bot-panel">
@@ -1812,40 +1689,19 @@ export default function Home() {
                     transaction is
                     available on Solscan.
                   </p>
-
-                  <small>
-                    {lastSignature}
-                  </small>
                 </div>
 
-                <div className="hero-actions">
-                  <button
-                    className="secondary"
-                    onClick={() =>
-                      copyText(
-                        lastSignature,
-                        'Transaction signature'
-                      )
-                    }
-                  >
-                    <Copy
-                      size={14}
-                    />
-                    Copy
-                  </button>
-
-                  <a
-                    href={`https://solscan.io/tx/${lastSignature}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="secondary"
-                  >
-                    View transaction
-                    <ExternalLink
-                      size={14}
-                    />
-                  </a>
-                </div>
+                <a
+                  href={`https://solscan.io/tx/${lastSignature}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="secondary"
+                >
+                  View transaction
+                  <ExternalLink
+                    size={14}
+                  />
+                </a>
               </div>
             )}
           </PageShell>
@@ -1939,13 +1795,11 @@ export default function Home() {
                     handleBuy
                   }
                   disabled={
-                    tradeLoading !==
-                    null
+                    tradeLoading
                   }
                 >
-                  {tradeLoading ===
-                  'Buy'
-                    ? 'Buying...'
+                  {tradeLoading
+                    ? 'Processing...'
                     : 'Buy'}
                 </button>
 
@@ -1969,15 +1823,18 @@ export default function Home() {
                     handleSell
                   }
                   disabled={
-                    tradeLoading !==
-                    null
+                    tradeLoading
                   }
                 >
-                  {tradeLoading ===
-                  'Sell'
-                    ? 'Selling...'
+                  {tradeLoading
+                    ? 'Processing...'
                     : 'Sell'}
                 </button>
+
+                <span>
+                  Sell amount uses
+                  token base units.
+                </span>
 
                 {tradeStatus && (
                   <span>
@@ -1986,34 +1843,16 @@ export default function Home() {
                 )}
 
                 {lastSignature && (
-                  <div className="hero-actions">
-                    <button
-                      className="secondary"
-                      onClick={() =>
-                        copyText(
-                          lastSignature,
-                          'Transaction signature'
-                        )
-                      }
-                    >
-                      <Copy
-                        size={14}
-                      />
-                      Copy signature
-                    </button>
-
-                    <a
-                      href={`https://solscan.io/tx/${lastSignature}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="secondary"
-                    >
-                      Solscan
-                      <ExternalLink
-                        size={14}
-                      />
-                    </a>
-                  </div>
+                  <a
+                    href={`https://solscan.io/tx/${lastSignature}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View transaction
+                    <ExternalLink
+                      size={14}
+                    />
+                  </a>
                 )}
               </div>
             </div>
@@ -2021,7 +1860,7 @@ export default function Home() {
             <div className="bot-panel">
               <div>
                 <span className="eyebrow">
-                  AUTOMATED MONITORING
+                  AUTOMATED TRADING
                 </span>
 
                 <h3>
@@ -2029,13 +1868,11 @@ export default function Home() {
                 </h3>
 
                 <p>
-                  MoonPad watches the
+                  MoonPad monitors the
                   token price every five
-                  seconds and detects
-                  your configured
-                  thresholds. It does
-                  not sign transactions
-                  without Phantom.
+                  seconds and detects your
+                  stop-loss or take-profit
+                  threshold.
                 </p>
               </div>
 
@@ -2166,32 +2003,6 @@ export default function Home() {
                   </span>
                 )}
 
-                {triggerPrice.stop !==
-                    null &&
-                  entryPrice !==
-                    null && (
-                    <span>
-                      Stop trigger:
-                      $
-                      {formatPrice(
-                        triggerPrice.stop
-                      )}
-                    </span>
-                  )}
-
-                {triggerPrice.target !==
-                    null &&
-                  entryPrice !==
-                    null && (
-                    <span>
-                      Take-profit
-                      trigger: $
-                      {formatPrice(
-                        triggerPrice.target
-                      )}
-                    </span>
-                  )}
-
                 {triggered && (
                   <div className="modal-preview">
                     <span>
@@ -2204,11 +2015,11 @@ export default function Home() {
 
                     <small>
                       MoonPad detected
-                      your condition.
+                      the condition.
                       Phantom approval
                       is still required
-                      to execute the
-                      actual sell.
+                      for the actual
+                      transaction.
                     </small>
 
                     <button
@@ -2245,8 +2056,8 @@ export default function Home() {
 
                   <p>
                     MoonPad separates
-                    monitoring from
-                    wallet authorization.
+                    wallet approval from
+                    market monitoring.
                   </p>
                 </div>
               </div>
@@ -2324,70 +2135,6 @@ export default function Home() {
             <ActivityLog
               events={activity}
             />
-
-            {trades.length >
-              0 && (
-              <div className="section">
-                <div className="section-head">
-                  <div>
-                    <h3>
-                      Recent trades
-                    </h3>
-
-                    <p>
-                      Confirmed on-chain
-                      MoonPad trades
-                    </p>
-                  </div>
-                </div>
-
-                <div className="activity">
-                  {trades.map(
-                    (
-                      trade
-                    ) => (
-                      <div
-                        className="event"
-                        key={
-                          trade.signature
-                        }
-                      >
-                        <span className="event-dot" />
-
-                        <time>
-                          {
-                            trade.time
-                          }
-                        </time>
-
-                        <b>
-                          {
-                            trade.action
-                          }
-                        </b>
-
-                        <span>
-                          {trade.amount}
-                        </span>
-
-                        <a
-                          href={`https://solscan.io/tx/${trade.signature}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          View
-                          <ExternalLink
-                            size={
-                              13
-                            }
-                          />
-                        </a>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
           </PageShell>
         )}
 
@@ -2494,31 +2241,33 @@ export default function Home() {
                         )} SOL`
                       : 'Loading...'}
                   </p>
+                </div>
 
+                <div className="hero-actions">
                   <button
                     className="secondary"
                     onClick={() =>
                       copyText(
                         walletAddress,
-                        'Wallet address'
+                        'Wallet address copied'
                       )
                     }
                   >
                     <Copy
                       size={14}
                     />
-                    Copy wallet
+                    Copy address
+                  </button>
+
+                  <button
+                    className="secondary"
+                    onClick={
+                      disconnectWallet
+                    }
+                  >
+                    Disconnect
                   </button>
                 </div>
-
-                <button
-                  className="secondary"
-                  onClick={
-                    disconnectWallet
-                  }
-                >
-                  Disconnect
-                </button>
               </div>
             )}
           </PageShell>
@@ -2541,46 +2290,40 @@ export default function Home() {
           connection={
             connection
           }
-          onLaunched={(
-            result
-          ) => {
-            setLaunchResult(
-              result
-            );
+          onLaunchSuccess={({
+            name,
+            ticker,
+            mint,
+            signature,
+          }) => {
+            const token: TokenItem = {
+              name,
+              ticker,
+              mc: '—',
+              change: '—',
+              holders: '—',
+              status: 'LIVE',
+              mint,
+              signature,
+              createdAt:
+                new Date().toISOString(),
+            };
 
-            setCreatedTokens(
-              (previous) => [
-                {
-                  name:
-                    result.name,
-                  ticker:
-                    result.ticker,
-                  mc: '—',
-                  change: '—',
-                  holders: '—',
-                  status: 'LIVE',
-                  mint:
-                    result.mint,
-                  signature:
-                    result.signature,
-                  createdAt:
-                    new Date().toISOString(),
-                },
-                ...previous,
-              ]
+            saveCreatedToken(
+              token
             );
 
             setLastSignature(
-              result.signature
+              signature
+            );
+
+            setTradeMint(
+              mint
             );
 
             addActivity(
-              'Launch',
-              `${result.ticker} launched successfully`
-            );
-
-            setActive(
-              'My Tokens'
+              ticker,
+              'token launched successfully'
             );
           }}
         />
@@ -2592,39 +2335,32 @@ export default function Home() {
           {toast}
         </div>
       )}
-
-      {copyStatus && (
-        <div className="toast">
-          <Copy size={15} />
-          {copyStatus}
-        </div>
-      )}
     </main>
   );
 }
 
 function formatPrice(
-  value: number
+  price: number
 ) {
   if (
-    value >= 1
+    price >= 1
   ) {
-    return value.toFixed(4);
+    return price.toFixed(
+      4
+    );
   }
 
   if (
-    value >= 0.01
+    price >= 0.01
   ) {
-    return value.toFixed(6);
+    return price.toFixed(
+      6
+    );
   }
 
-  if (
-    value >= 0.000001
-  ) {
-    return value.toFixed(9);
-  }
-
-  return value.toExponential(4);
+  return price.toPrecision(
+    6
+  );
 }
 
 function TokenCard({
@@ -2632,7 +2368,7 @@ function TokenCard({
   large = false,
   onCopy,
 }: {
-  t: TokenRecord;
+  t: TokenItem;
   large?: boolean;
   onCopy?: () => void;
 }) {
@@ -2704,44 +2440,6 @@ function TokenCard({
         </div>
       </div>
 
-      {t.mint && (
-        <div className="modal-preview">
-          <span>
-            MINT ADDRESS
-          </span>
-
-          <small>
-            {t.mint}
-          </small>
-
-          <div className="hero-actions">
-            {onCopy && (
-              <button
-                className="secondary"
-                onClick={onCopy}
-              >
-                <Copy
-                  size={13}
-                />
-                Copy Mint
-              </button>
-            )}
-
-            <a
-              href={`https://solscan.io/token/${t.mint}`}
-              target="_blank"
-              rel="noreferrer"
-              className="secondary"
-            >
-              Solscan
-              <ExternalLink
-                size={13}
-              />
-            </a>
-          </div>
-        </div>
-      )}
-
       <div className="mini-chart">
         {Array.from({
           length: 9,
@@ -2756,6 +2454,48 @@ function TokenCard({
           />
         ))}
       </div>
+
+      {t.mint && (
+        <div className="token-actions">
+          <button
+            className="ghost"
+            onClick={
+              onCopy
+            }
+          >
+            <Copy
+              size={13}
+            />
+            Copy mint
+          </button>
+
+          <a
+            className="ghost"
+            href={`https://solscan.io/token/${t.mint}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View
+            <ExternalLink
+              size={13}
+            />
+          </a>
+
+          <a
+            className="ghost"
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+              `Check out ${t.ticker} on MoonPad 🚀\n${t.mint}`
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Share
+            <Share2
+              size={13}
+            />
+          </a>
+        </div>
+      )}
     </article>
   );
 }
@@ -2871,55 +2611,35 @@ function ActivityLog({
       </div>
 
       <div className="activity">
-        {events.length ===
-        0 ? (
-          <div className="event">
-            <span className="event-dot" />
+        {events.map(
+          (event, index) => (
+            <div
+              className="event"
+              key={
+                event.time +
+                event.actor +
+                index
+              }
+            >
+              <span className="event-dot" />
 
-            <span>
-              No activity yet.
-            </span>
-          </div>
-        ) : (
-          events.map(
-            (
-              event,
-              index
-            ) => (
-              <div
-                className="event"
-                key={
-                  event.time +
-                  event.actor +
-                  index
-                }
-              >
-                <span className="event-dot" />
+              <time>
+                {event.time}
+              </time>
 
-                <time>
-                  {
-                    event.time
-                  }
-                </time>
+              <b>
+                {event.actor}
+              </b>
 
-                <b>
-                  {
-                    event.actor
-                  }
-                </b>
+              <span>
+                {event.action}
+              </span>
 
-                <span>
-                  {
-                    event.action
-                  }
-                </span>
-
-                <Copy
-                  size={14}
-                  className="copy"
-                />
-              </div>
-            )
+              <Copy
+                size={14}
+                className="copy"
+              />
+            </div>
           )
         )}
       </div>
@@ -2965,7 +2685,7 @@ function LaunchModal({
   onNotify,
   walletAddress,
   connection,
-  onLaunched,
+  onLaunchSuccess,
 }: {
   onClose: () => void;
   onNotify: (
@@ -2973,11 +2693,11 @@ function LaunchModal({
   ) => void;
   walletAddress: string;
   connection: Connection;
-  onLaunched: (result: {
-    mint: string;
-    signature: string;
+  onLaunchSuccess: (data: {
     name: string;
     ticker: string;
+    mint: string;
+    signature: string;
   }) => void;
 }) {
   const [name, setName] =
@@ -3006,7 +2726,12 @@ function LaunchModal({
 
   if (success) {
     return (
-      <div className="modal-backdrop">
+      <div
+        className="modal-backdrop"
+        onClick={
+          undefined
+        }
+      >
         <div
           className="modal"
           onClick={(e) =>
@@ -3016,135 +2741,136 @@ function LaunchModal({
           <div className="modal-head">
             <div>
               <span className="eyebrow">
-                LAUNCH CONFIRMED
+                LAUNCH COMPLETE
               </span>
 
               <h3>
-                {name ||
-                  'Moon Token'}
+                {name}
               </h3>
             </div>
+          </div>
 
-            <button
-              className="close"
-              onClick={
-                onClose
-              }
+          <div className="modal-preview">
+            <span>
+              Token
+            </span>
+
+            <b>
+              {ticker}
+            </b>
+
+            <small>
+              Your token was
+              successfully submitted
+              to Solana Mainnet.
+            </small>
+          </div>
+
+          <div className="modal-preview">
+            <span>
+              Mint address
+            </span>
+
+            <b
+              style={{
+                wordBreak:
+                  'break-all',
+              }}
             >
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="modal-preview">
-            <span>
-              TOKEN MINT
-            </span>
-
-            <b>
-              {success.mint.slice(
-                0,
-                8
-              )}
-              ...
-              {success.mint.slice(
-                -8
-              )}
-            </b>
-
-            <small>
               {success.mint}
-            </small>
+            </b>
+
+            <div className="hero-actions">
+              <button
+                className="secondary"
+                onClick={() =>
+                  copyValue(
+                    success.mint,
+                    onNotify,
+                    'Mint copied'
+                  )
+                }
+              >
+                <Copy
+                  size={14}
+                />
+                Copy mint
+              </button>
+
+              <a
+                className="secondary"
+                href={`https://solscan.io/token/${success.mint}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Solscan
+                <ExternalLink
+                  size={14}
+                />
+              </a>
+            </div>
           </div>
 
           <div className="modal-preview">
             <span>
-              TRANSACTION
+              Transaction
             </span>
 
-            <b>
-              Confirmed on Solana
+            <b
+              style={{
+                wordBreak:
+                  'break-all',
+              }}
+            >
+              {success.signature}
             </b>
 
-            <small>
-              {success.signature}
-            </small>
+            <a
+              className="secondary"
+              href={`https://solscan.io/tx/${success.signature}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              View transaction
+              <ExternalLink
+                size={14}
+              />
+            </a>
           </div>
 
           <div className="modal-row">
             <button
               className="secondary"
-              onClick={() =>
-                navigator.clipboard
-                  .writeText(
-                    success.mint
-                  )
-                  .then(() =>
-                    onNotify(
-                      'Mint address copied'
-                    )
-                  )
-              }
+              onClick={() => {
+                onNotify(
+                  'Launch saved to My Tokens'
+                );
+                onClose();
+              }}
             >
-              <Copy
-                size={15}
-              />
-              Copy Mint
+              Done
             </button>
 
-            <a
-              href={`https://solscan.io/token/${success.mint}`}
-              target="_blank"
-              rel="noreferrer"
-              className="secondary"
-            >
-              Token
-              <ExternalLink
-                size={14}
-              />
-            </a>
-
-            <a
-              href={`https://solscan.io/tx/${success.signature}`}
-              target="_blank"
-              rel="noreferrer"
+            <button
               className="primary"
+              onClick={() => {
+                copyValue(
+                  `Check out ${ticker} on MoonPad 🚀\n${success.mint}`,
+                  onNotify,
+                  'Launch text copied'
+                );
+              }}
             >
-              Transaction
-              <ExternalLink
-                size={14}
+              <Share2
+                size={15}
               />
-            </a>
+              Copy Share Text
+            </button>
           </div>
 
-          <button
-            className="primary"
-            onClick={() => {
-              onLaunched({
-                mint:
-                  success.mint,
-                signature:
-                  success.signature,
-                name:
-                  name.trim(),
-                ticker:
-                  `$${ticker
-                    .replace(
-                      '$',
-                      ''
-                    )
-                    .trim()}`,
-              });
-
-              onClose();
-            }}
-          >
-            Continue to My Tokens
-          </button>
-
           <p className="note">
-            Your token was submitted
-            and confirmed on Solana
-            Mainnet.
+            Your launch is now
+            saved inside MoonPad.
           </p>
         </div>
       </div>
@@ -3196,7 +2922,7 @@ function LaunchModal({
 
           <div className="modal-preview">
             <span>
-              TOKEN DETAILS
+              Token details
             </span>
 
             <b>
@@ -3211,7 +2937,7 @@ function LaunchModal({
 
           <div className="modal-preview">
             <span>
-              TOTAL SUPPLY
+              Total supply
             </span>
 
             <b>
@@ -3233,11 +2959,16 @@ function LaunchModal({
 
           <div className="modal-preview">
             <span>
-              IMAGE
+              Network
             </span>
 
+            <b>
+              Solana Mainnet
+            </b>
+
             <small>
-              {image}
+              Phantom approval is
+              required.
             </small>
           </div>
 
@@ -3280,10 +3011,6 @@ function LaunchModal({
                       'Connect Phantom first.'
                     );
                   }
-
-                  onNotify(
-                    'Uploading token metadata...'
-                  );
 
                   const metadataResponse =
                     await fetch(
@@ -3338,15 +3065,8 @@ function LaunchModal({
                     );
                   }
 
-                  onNotify(
-                    'Preparing Solana launch transaction...'
-                  );
-
                   const mintKeypair =
                     Keypair.generate();
-
-                  const mintAddress =
-                    mintKeypair.publicKey.toString();
 
                   const createInstruction =
                     await PUMP_SDK.createV2Instruction(
@@ -3404,18 +3124,10 @@ function LaunchModal({
                     mintKeypair
                   );
 
-                  onNotify(
-                    'Transaction ready — approve the launch in Phantom.'
-                  );
-
                   const signed =
                     await provider.signTransaction(
                       transaction
                     );
-
-                  onNotify(
-                    'Launch approved — submitting to Solana...'
-                  );
 
                   const signature =
                     await connection.sendRawTransaction(
@@ -3434,14 +3146,30 @@ function LaunchModal({
                     'confirmed'
                   );
 
+                  const mint =
+                    mintKeypair.publicKey.toString();
+
+                  onLaunchSuccess({
+                    name:
+                      name.trim(),
+                    ticker:
+                      `$${ticker
+                        .replace(
+                          '$',
+                          ''
+                        )
+                        .trim()}`,
+                    mint,
+                    signature,
+                  });
+
                   setSuccess({
-                    mint:
-                      mintAddress,
+                    mint,
                     signature,
                   });
 
                   onNotify(
-                    'Launch confirmed on Solana'
+                    'Token launch confirmed'
                   );
                 } catch (error) {
                   console.error(
@@ -3582,7 +3310,7 @@ function LaunchModal({
 
         <div className="modal-preview">
           <span>
-            PREVIEW
+            Preview
           </span>
 
           <b>
@@ -3612,32 +3340,14 @@ function LaunchModal({
           <button
             className="primary"
             onClick={() => {
-              const cleanTicker =
-                ticker
-                  .replace(
-                    '$',
-                    ''
-                  )
-                  .trim();
-
               if (
                 !name.trim() ||
-                !cleanTicker ||
+                !ticker.trim() ||
                 !description.trim() ||
                 !image.trim()
               ) {
                 onNotify(
                   'Name, ticker, description, and image are required.'
-                );
-                return;
-              }
-
-              if (
-                cleanTicker.length >
-                10
-              ) {
-                onNotify(
-                  'Ticker must be 10 characters or less.'
                 );
                 return;
               }
@@ -3673,4 +3383,21 @@ function LaunchModal({
       </div>
     </div>
   );
+}
+
+function copyValue(
+  value: string,
+  notify: (
+    message: string
+  ) => void,
+  message: string
+) {
+  navigator.clipboard
+    .writeText(value)
+    .then(() =>
+      notify(message)
+    )
+    .catch(() =>
+      notify('Copy failed')
+    );
 }
