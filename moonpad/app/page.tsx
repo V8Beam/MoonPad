@@ -239,12 +239,14 @@ amount: Math.floor(Number(tradeAmount) * 1_000_000).toString(),
 
       const signed = await provider.signTransaction(transaction);
 
-      const signature = await connection.sendRawTransaction(
-        signed.serialize(),
-        { maxRetries: 2 }
-      );
+const signature = await connection.sendRawTransaction(
+  signed.serialize(),
+  { maxRetries: 2 }
+);
 
-      setTradeStatus(`Sell submitted: ${signature.slice(0, 8)}...`);
+await connection.confirmTransaction(signature, 'confirmed');
+
+setTradeStatus(`Sell confirmed: ${signature.slice(0, 8)}...`);
     } catch (error) {
       console.error('MoonPad sell error:', error);
       setTradeStatus(
