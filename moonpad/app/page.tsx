@@ -298,7 +298,7 @@ function LaunchModal({onClose,onNotify,walletAddress,connection}:{onClose:()=>vo
 const [ticker,setTicker]=useState('');
 const [description,setDescription]=useState('');
 const [image,setImage]=useState('');
-const [supply,setSupply]=useState('1000000000');
+const supply = '1000000000';
   const [review,setReview]=useState(false);
  if (review) {
   return <div className="modal-backdrop" onClick={onClose}>
