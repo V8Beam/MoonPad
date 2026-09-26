@@ -405,7 +405,7 @@ onNotify(`Launch confirmed: ${signature.slice(0, 8)}...`);
 }
   return <div className="modal-backdrop" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">TOKEN LAUNCHER</span><h3>Create a token</h3></div><button className="close" onClick={onClose}><X size={20}/></button></div><label>Token name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Moon Token"/></label><label>Ticker<input value={ticker} onChange={e=>setTicker(e.target.value.toUpperCase())} placeholder="$MOON" maxLength={10}/></label><label>Description<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Tell people what your token is about..."/></label>
    <label>Token image URL<input value={image} onChange={e=>setImage(e.target.value)} placeholder="https://..."/></label>
-<label>Total supply<input value={supply} onChange={e=>setSupply(e.target.value)} inputMode="numeric" /></label>
+<label>Total supply<input value="1,000,000,000" readOnly /></label>
    <div className="modal-preview"><span>Preview</span><b>{name || 'Moon Token'}</b><small>{ticker || '$MOON'} · {description || 'Your token description'}</small></div><div className="modal-row"><button className="secondary" onClick={onClose}>Cancel</button><button
   className="primary"
   onClick={() => {
