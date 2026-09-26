@@ -225,13 +225,12 @@ const [tradeStatus, setTradeStatus] = useState('');
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputMint: tradeMint.trim(),
-          outputMint: 'So11111111111111111111111111111111111111112',
-          amount: tradeAmount,
-          userPublicKey: provider.publicKey.toString(),
-        }),
+body: JSON.stringify({
+  inputMint: tradeMint.trim(),
+  outputMint: 'So11111111111111111111111111111111111111112',
+  amount: Math.floor(Number(tradeAmount) * 10 ** 6).toString(),
+  userPublicKey: provider.publicKey.toString(),
+}),
       });
 
       const data = await response.json();
