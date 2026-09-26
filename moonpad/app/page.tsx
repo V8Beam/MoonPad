@@ -51,7 +51,90 @@ const [tradeStatus, setTradeStatus] = useState('');
     setToast(message);
     window.setTimeout(() => setToast(''), 2200);
   };
+  useEffect(() => {
+    if (!botEnabled) return;
+    if (!tradeMint.trim() || !tradeAmount || !stopLoss || !takeProfit) {
+      setTradeStatus('Bot enabled — waiting for all trading rules.');
+      return;
+    }
 
+    let stopped = false;
+
+    const monitor = async () => {
+      try {
+        const response = await fetch(
+          `/api/price?mint=${encodeURIComponent(tradeMint.trim())}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Unable to read token price');
+        }
+
+        if (stopped) return;
+
+        const entryPrice = Number(data.entryPrice);
+        const currentPrice = Number(data.price);
+
+        if (
+          !Number.isFinite(entryPrice) ||
+          !Number.isFinite(currentPrice) ||
+          entryPrice <= 0
+        ) {
+          setTradeStatus('Bot active — waiting for valid market price.');
+          return;
+        }
+
+        const changePercent =
+          ((currentPrice - entryPrice) / entryPrice) * 100;
+
+        const stopLossPercent = Number(stopLoss);
+        const takeProfitPercent = Number(takeProfit);
+
+        if (changePercent <= -stopLossPercent) {
+          setTradeStatus(
+            `STOP-LOSS TRIGGERED: ${changePercent.toFixed(2)}%`
+          );
+          return;
+        }
+
+        if (changePercent >= takeProfitPercent) {
+          setTradeStatus(
+            `TAKE-PROFIT TRIGGERED: +${changePercent.toFixed(2)}%`
+          );
+          return;
+        }
+
+        setTradeStatus(
+          `Bot active: ${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`
+        );
+      } catch (error) {
+        if (!stopped) {
+          setTradeStatus(
+            error instanceof Error
+              ? error.message
+              : 'Bot price check failed.'
+          );
+        }
+      }
+    };
+
+    monitor();
+
+    const interval = window.setInterval(monitor, 5000);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+    };
+  }, [
+    botEnabled,
+    tradeMint,
+    tradeAmount,
+    stopLoss,
+    takeProfit,
+  ]);
   const nav = [
     ['Dashboard', LayoutDashboard], ['Launch Token', Rocket], ['AI Agents', Bot], ['My Tokens', CircleDollarSign], ['Activity', Activity], ['Settings', Settings]
   ] as const;
