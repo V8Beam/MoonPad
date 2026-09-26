@@ -166,29 +166,6 @@ const [supply,setSupply]=useState('1000000000');
       return;
     }
 
-    const mintKeypair = Keypair.generate();
-const metadataResponse = await fetch('/api/metadata', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    name: name.trim(),
-    symbol: ticker.replace('$', '').trim(),
-    description: description.trim(),
-    image: image.trim(),
-  }),
-});
-
-if (!metadataResponse.ok) {
-  throw new Error('Metadata upload failed');
-}
-
-const metadata = await metadataResponse.json();
-const metadataUri = metadata.metadataUri;
-
-const mintKeypair = Keypair.generate();
-
 const metadataResponse = await fetch('/api/metadata', {
   method: 'POST',
   headers: {
