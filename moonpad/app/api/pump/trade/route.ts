@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   Connection,
   PublicKey,
+  TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
@@ -15,6 +16,11 @@ import {
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
+  createTransferCheckedInstruction,
+  getAssociatedTokenAddressSync,
+  getMint,
 } from '@solana/spl-token';
 
 const RPC_URL =
@@ -76,7 +82,60 @@ async function getMintTokenProgram(
   );
 }
 
-export async function POST(request: Request) {
+async function findUserTokenAccount(
+  connection: Connection,
+  mint: PublicKey,
+  user: PublicKey,
+  tokenProgram: PublicKey
+) {
+  const response =
+    await connection.getTokenAccountsByOwner(
+      user,
+      {
+        mint,
+        programId:
+          tokenProgram,
+      },
+      'confirmed'
+    );
+
+  if (
+    response.value.length === 0
+  ) {
+    throw new Error(
+      'No token account holding this token was found in the connected wallet.'
+    );
+  }
+
+  for (
+    const account of response.value
+  ) {
+    const balance =
+      await connection.getTokenAccountBalance(
+        account.pubkey,
+        'confirmed'
+      );
+
+    if (
+      balance.value.amount !== '0'
+    ) {
+      return {
+        address:
+          account.pubkey,
+        rawAmount:
+          balance.value.amount,
+      };
+    }
+  }
+
+  throw new Error(
+    'The connected wallet has no spendable balance for this token.'
+  );
+}
+
+export async function POST(
+  request: Request
+) {
   try {
     const body =
       await request.json();
@@ -133,7 +192,9 @@ export async function POST(request: Request) {
     }
 
     const user =
-      new PublicKey(userPublicKey);
+      new PublicKey(
+        userPublicKey
+      );
 
     const input =
       new PublicKey(inputMint);
@@ -179,7 +240,9 @@ export async function POST(request: Request) {
       );
 
     const mint =
-      isBuy ? output : input;
+      isBuy
+        ? output
+        : input;
 
     const tokenProgram =
       await getMintTokenProgram(
@@ -203,8 +266,11 @@ export async function POST(request: Request) {
         'confirmed'
       );
 
-    let instructions;
+    let instructions:
+      TransactionInstruction[];
+
     let expectedOutput: BN;
+
     let tradeType:
       | 'buy'
       | 'sell';
@@ -213,7 +279,9 @@ export async function POST(request: Request) {
       tradeType = 'buy';
 
       const solAmount =
-        new BN(String(amount));
+        new BN(
+          String(amount)
+        );
 
       const [
         buyState,
@@ -267,8 +335,6 @@ export async function POST(request: Request) {
             buyState.bondingCurve,
           amount:
             solAmount,
-          quoteMint:
-            new PublicKey(SOL_MINT),
         });
 
       if (
@@ -306,37 +372,24 @@ export async function POST(request: Request) {
       tradeType = 'sell';
 
       const tokenAmount =
-        new BN(String(amount));
+        new BN(
+          String(amount)
+        );
 
       const [
-        sellState,
         global,
         feeConfig,
+        bondingCurve,
       ] = await Promise.all([
-        sdk.fetchSellState(
-          mint,
-          user
-        ),
         sdk.fetchGlobal(),
         sdk.fetchFeeConfig(),
+        sdk.fetchBondingCurve(
+          mint
+        ),
       ]);
 
       if (
-        !sellState.bondingCurve
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              'Pump bonding curve was not found for this token.',
-          },
-          { status: 404 }
-        );
-      }
-
-      if (
-        sellState
-          .bondingCurve
-          .complete
+        bondingCurve.complete
       ) {
         return NextResponse.json(
           {
@@ -348,16 +401,60 @@ export async function POST(request: Request) {
         );
       }
 
+      const bondingCurveAddress =
+        await PUMP_SDK.getBondingCurvePda(
+          mint
+        );
+
+      const bondingCurveAccountInfo =
+        await connection.getAccountInfo(
+          bondingCurveAddress
+        );
+
+      if (
+        !bondingCurveAccountInfo
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Pump bonding curve was not found for this token.',
+          },
+          { status: 404 }
+        );
+      }
+
+      const userTokenAccount =
+        await findUserTokenAccount(
+          connection,
+          mint,
+          user,
+          tokenProgram
+        );
+
+      if (
+        BigInt(
+          String(amount)
+        ) >
+        BigInt(
+          userTokenAccount.rawAmount
+        )
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Sell amount exceeds your wallet token balance.',
+          },
+          { status: 400 }
+        );
+      }
+
       expectedOutput =
         getSellSolAmountFromTokenAmount({
           global,
           feeConfig,
           mintSupply:
-            sellState
-              .bondingCurve
-              .tokenTotalSupply,
-          bondingCurve:
-            sellState.bondingCurve,
+            bondingCurve.tokenTotalSupply,
+          bondingCurve,
           amount:
             tokenAmount,
         });
@@ -376,13 +473,76 @@ export async function POST(request: Request) {
         );
       }
 
-      instructions =
+      const mintInfo =
+        await getMint(
+          connection,
+          mint,
+          'confirmed',
+          tokenProgram
+        );
+
+      const associatedUserAccount =
+        getAssociatedTokenAddressSync(
+          mint,
+          user,
+          false,
+          tokenProgram,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+      const associatedAccountInfo =
+        await connection.getAccountInfo(
+          associatedUserAccount,
+          'confirmed'
+        );
+
+      if (
+        !associatedAccountInfo ||
+        !associatedAccountInfo.owner.equals(
+          tokenProgram
+        )
+      ) {
+        instructions =
+          [
+            createAssociatedTokenAccountIdempotentInstruction(
+              user,
+              associatedUserAccount,
+              user,
+              mint,
+              tokenProgram,
+              ASSOCIATED_TOKEN_PROGRAM_ID
+            ),
+          ];
+      } else {
+        instructions = [];
+      }
+
+      if (
+        !userTokenAccount.address.equals(
+          associatedUserAccount
+        )
+      ) {
+        instructions.push(
+          createTransferCheckedInstruction(
+            userTokenAccount.address,
+            mint,
+            associatedUserAccount,
+            user,
+            BigInt(
+              tokenAmount.toString()
+            ),
+            mintInfo.decimals,
+            [],
+            tokenProgram
+          )
+        );
+      }
+
+      const sellInstructions =
         await PUMP_SDK.sellInstructions({
           global,
-          bondingCurveAccountInfo:
-            sellState.bondingCurveAccountInfo,
-          bondingCurve:
-            sellState.bondingCurve,
+          bondingCurveAccountInfo,
+          bondingCurve,
           mint,
           user,
           amount:
@@ -392,11 +552,14 @@ export async function POST(request: Request) {
           slippage,
           tokenProgram,
           mayhemMode:
-            sellState
-              .bondingCurve
+            bondingCurve
               .isMayhemMode ??
             false,
         });
+
+      instructions.push(
+        ...sellInstructions
+      );
     }
 
     if (
