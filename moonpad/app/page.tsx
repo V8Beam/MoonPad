@@ -975,15 +975,23 @@ const sendSwap = async ({
       `Transaction ready — approve ${action.toLowerCase()} in Phantom.`
     );
 
-    const result =
-      await provider.signAndSendTransaction(
+    const signed =
+      await provider.signTransaction(
         transaction
       );
 
+    setTradeStatus(
+      `Sending ${action.toLowerCase()} transaction to Solana...`
+    );
+
     const signature =
-      typeof result === 'string'
-        ? result
-        : result.signature;
+      await connection.sendRawTransaction(
+        signed.serialize(),
+        {
+          maxRetries: 3,
+          skipPreflight: false,
+        }
+      );
 
     setTradeStatus(
       'Transaction submitted — waiting for confirmation...'
