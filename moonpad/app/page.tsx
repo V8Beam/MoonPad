@@ -35,7 +35,7 @@ const SOL_MINT =
   'So11111111111111111111111111111111111111112';
 
 const SOLANA_RPC =
-  'https://api.mainnet-beta.solana.com';
+  '/api/rpc';
 
 type TokenItem = {
   name: string;
