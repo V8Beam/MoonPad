@@ -340,6 +340,7 @@ export async function POST(
             buyState.bondingCurve,
           amount:
             solAmount,
+          quoteMint,
         });
 
       if (
