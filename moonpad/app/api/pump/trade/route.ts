@@ -78,7 +78,8 @@ async function getMintTokenProgram(
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body =
+      await request.json();
 
     const {
       inputMint,
@@ -180,22 +181,11 @@ export async function POST(request: Request) {
     const mint =
       isBuy ? output : input;
 
-    /*
-     * Pump SDK automatically detects whether
-     * the mint uses the normal SPL Token
-     * program or Token-2022.
-     *
-     * Keep this lookup here as a fallback
-     * and validation step.
-     */
     const tokenProgram =
       await getMintTokenProgram(
         connection,
         mint
       );
-
-    const quoteMint =
-      new PublicKey(SOL_MINT);
 
     const safeSlippageBps =
       clampSlippageBps(
@@ -251,7 +241,9 @@ export async function POST(request: Request) {
       }
 
       if (
-        buyState.bondingCurve.complete
+        buyState
+          .bondingCurve
+          .complete
       ) {
         return NextResponse.json(
           {
@@ -275,7 +267,8 @@ export async function POST(request: Request) {
             buyState.bondingCurve,
           amount:
             solAmount,
-          quoteMint,
+          quoteMint:
+            buyState.quoteMint,
         });
 
       if (
@@ -292,33 +285,27 @@ export async function POST(request: Request) {
         );
       }
 
-      /*
-       * IMPORTANT:
-       * Spread the entire buyState so the
-       * SDK receives its automatically detected
-       * tokenProgram.
-       */
-instructions =
-  await PUMP_SDK.buyInstructions({
-    global,
-    bondingCurveAccountInfo:
-      buyState.bondingCurveAccountInfo,
-    bondingCurve:
-      buyState.bondingCurve,
-    associatedUserAccountInfo:
-      buyState.associatedUserAccountInfo,
-    mint,
-    user,
-    amount:
-      expectedOutput,
-    solAmount,
-    slippage,
-    tokenProgram:
-      buyState.tokenProgram,
-    quoteMint,
-    quoteTokenProgram:
-      buyState.quoteTokenProgram,
-  });
+      instructions =
+        await PUMP_SDK.buyInstructions({
+          global,
+          bondingCurveAccountInfo:
+            buyState.bondingCurveAccountInfo,
+          bondingCurve:
+            buyState.bondingCurve,
+          associatedUserAccountInfo:
+            buyState.associatedUserAccountInfo,
+          mint,
+          user,
+          amount:
+            expectedOutput,
+          solAmount,
+          slippage,
+          tokenProgram,
+          quoteMint:
+            buyState.quoteMint,
+          quoteTokenProgram:
+            buyState.quoteTokenProgram,
+        });
     } else {
       tradeType = 'sell';
 
@@ -393,18 +380,13 @@ instructions =
         );
       }
 
-      /*
-       * IMPORTANT FIX:
-       *
-       * Spread the COMPLETE sellState.
-       * This passes bondingCurveAccountInfo,
-       * bondingCurve, AND the automatically
-       * detected tokenProgram.
-       */
       instructions =
         await PUMP_SDK.sellInstructions({
-          ...sellState,
           global,
+          bondingCurveAccountInfo:
+            sellState.bondingCurveAccountInfo,
+          bondingCurve:
+            sellState.bondingCurve,
           mint,
           user,
           amount:
@@ -412,6 +394,12 @@ instructions =
           solAmount:
             expectedOutput,
           slippage,
+          tokenProgram,
+          mayhemMode:
+            sellState
+              .bondingCurve
+              .isMayhemMode ??
+            false,
         });
     }
 
@@ -430,7 +418,8 @@ instructions =
 
     const messageV0 =
       new TransactionMessage({
-        payerKey: user,
+        payerKey:
+          user,
         recentBlockhash:
           blockhash,
         instructions,
@@ -474,12 +463,16 @@ instructions =
         : 'Failed to create Pump trade transaction';
 
     if (
-      message.toLowerCase().includes(
-        'bonding curve account not found'
-      ) ||
-      message.toLowerCase().includes(
-        'bonding curve was not found'
-      )
+      message
+        .toLowerCase()
+        .includes(
+          'bonding curve account not found'
+        ) ||
+      message
+        .toLowerCase()
+        .includes(
+          'bonding curve was not found'
+        )
     ) {
       return NextResponse.json(
         {
