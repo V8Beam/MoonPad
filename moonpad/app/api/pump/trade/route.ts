@@ -250,6 +250,11 @@ export async function POST(
         mint
       );
 
+    const quoteMint =
+      new PublicKey(
+        SOL_MINT
+      );
+
     const safeSlippageBps =
       clampSlippageBps(
         slippageBps
@@ -335,6 +340,7 @@ export async function POST(
             buyState.bondingCurve,
           amount:
             solAmount,
+          quoteMint,
         });
 
       if (
@@ -377,19 +383,34 @@ export async function POST(
         );
 
       const [
+        buyState,
         global,
         feeConfig,
-        bondingCurve,
       ] = await Promise.all([
+        sdk.fetchBuyState(
+          mint,
+          user
+        ),
         sdk.fetchGlobal(),
         sdk.fetchFeeConfig(),
-        sdk.fetchBondingCurve(
-          mint
-        ),
       ]);
 
       if (
-        bondingCurve.complete
+        !buyState.bondingCurve
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'Pump bonding curve was not found for this token.',
+          },
+          { status: 404 }
+        );
+      }
+
+      if (
+        buyState
+          .bondingCurve
+          .complete
       ) {
         return NextResponse.json(
           {
@@ -398,28 +419,6 @@ export async function POST(
             graduated: true,
           },
           { status: 409 }
-        );
-      }
-
-      const bondingCurveAddress =
-        await PUMP_SDK.getBondingCurvePda(
-          mint
-        );
-
-      const bondingCurveAccountInfo =
-        await connection.getAccountInfo(
-          bondingCurveAddress
-        );
-
-      if (
-        !bondingCurveAccountInfo
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              'Pump bonding curve was not found for this token.',
-          },
-          { status: 404 }
         );
       }
 
@@ -453,10 +452,14 @@ export async function POST(
           global,
           feeConfig,
           mintSupply:
-            bondingCurve.tokenTotalSupply,
-          bondingCurve,
+            buyState
+              .bondingCurve
+              .tokenTotalSupply,
+          bondingCurve:
+            buyState.bondingCurve,
           amount:
             tokenAmount,
+          quoteMint,
         });
 
       if (
@@ -496,25 +499,21 @@ export async function POST(
           'confirmed'
         );
 
+      instructions = [];
+
       if (
-        !associatedAccountInfo ||
-        !associatedAccountInfo.owner.equals(
-          tokenProgram
-        )
+        !associatedAccountInfo
       ) {
-        instructions =
-          [
-            createAssociatedTokenAccountIdempotentInstruction(
-              user,
-              associatedUserAccount,
-              user,
-              mint,
-              tokenProgram,
-              ASSOCIATED_TOKEN_PROGRAM_ID
-            ),
-          ];
-      } else {
-        instructions = [];
+        instructions.push(
+          createAssociatedTokenAccountIdempotentInstruction(
+            user,
+            associatedUserAccount,
+            user,
+            mint,
+            tokenProgram,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          )
+        );
       }
 
       if (
@@ -541,8 +540,10 @@ export async function POST(
       const sellInstructions =
         await PUMP_SDK.sellInstructions({
           global,
-          bondingCurveAccountInfo,
-          bondingCurve,
+          bondingCurveAccountInfo:
+            buyState.bondingCurveAccountInfo,
+          bondingCurve:
+            buyState.bondingCurve,
           mint,
           user,
           amount:
@@ -552,7 +553,8 @@ export async function POST(
           slippage,
           tokenProgram,
           mayhemMode:
-            bondingCurve
+            buyState
+              .bondingCurve
               .isMayhemMode ??
             false,
         });
