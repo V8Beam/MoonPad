@@ -340,7 +340,6 @@ export async function POST(
             buyState.bondingCurve,
           amount:
             solAmount,
-          quoteMint,
         });
 
       if (
@@ -459,7 +458,6 @@ export async function POST(
             buyState.bondingCurve,
           amount:
             tokenAmount,
-          quoteMint,
         });
 
       if (
