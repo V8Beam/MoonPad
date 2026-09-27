@@ -180,6 +180,14 @@ export async function POST(request: Request) {
     const mint =
       isBuy ? output : input;
 
+    /*
+     * Pump SDK automatically detects whether
+     * the mint uses the normal SPL Token
+     * program or Token-2022.
+     *
+     * Keep this lookup here as a fallback
+     * and validation step.
+     */
     const tokenProgram =
       await getMintTokenProgram(
         connection,
@@ -284,22 +292,22 @@ export async function POST(request: Request) {
         );
       }
 
+      /*
+       * IMPORTANT:
+       * Spread the entire buyState so the
+       * SDK receives its automatically detected
+       * tokenProgram.
+       */
       instructions =
         await PUMP_SDK.buyInstructions({
+          ...buyState,
           global,
-          bondingCurveAccountInfo:
-            buyState.bondingCurveAccountInfo,
-          bondingCurve:
-            buyState.bondingCurve,
-          associatedUserAccountInfo:
-            buyState.associatedUserAccountInfo,
           mint,
           user,
           amount:
             expectedOutput,
           solAmount,
           slippage,
-          tokenProgram,
         });
     } else {
       tradeType = 'sell';
@@ -375,13 +383,18 @@ export async function POST(request: Request) {
         );
       }
 
+      /*
+       * IMPORTANT FIX:
+       *
+       * Spread the COMPLETE sellState.
+       * This passes bondingCurveAccountInfo,
+       * bondingCurve, AND the automatically
+       * detected tokenProgram.
+       */
       instructions =
         await PUMP_SDK.sellInstructions({
+          ...sellState,
           global,
-          bondingCurveAccountInfo:
-            sellState.bondingCurveAccountInfo,
-          bondingCurve:
-            sellState.bondingCurve,
           mint,
           user,
           amount:
@@ -389,12 +402,6 @@ export async function POST(request: Request) {
           solAmount:
             expectedOutput,
           slippage,
-          tokenProgram,
-          mayhemMode:
-            sellState
-              .bondingCurve
-              .isMayhemMode ??
-            false,
         });
     }
 
