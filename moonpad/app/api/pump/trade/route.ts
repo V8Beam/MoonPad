@@ -5,7 +5,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { NATIVE_MINT } from '@solana/spl-token';
 import BN from 'bn.js';
 import {
   OnlinePumpSdk,
@@ -88,8 +88,13 @@ export async function POST(request: Request) {
     const input = new PublicKey(inputMint);
     const output = new PublicKey(outputMint);
 
-    const isBuy = inputMint === SOL_MINT;
-    const isSell = outputMint === SOL_MINT;
+    const isBuy = input.equals(
+      NATIVE_MINT
+    );
+
+    const isSell = output.equals(
+      NATIVE_MINT
+    );
 
     if (!isBuy && !isSell) {
       return NextResponse.json(
@@ -101,16 +106,11 @@ export async function POST(request: Request) {
       );
     }
 
-    if (isBuy && outputMint === SOL_MINT) {
+    if (isBuy && isSell) {
       return NextResponse.json(
-        { error: 'Invalid buy pair.' },
-        { status: 400 }
-      );
-    }
-
-    if (isSell && inputMint === SOL_MINT) {
-      return NextResponse.json(
-        { error: 'Invalid sell pair.' },
+        {
+          error: 'Invalid trade pair.',
+        },
         { status: 400 }
       );
     }
@@ -120,9 +120,12 @@ export async function POST(request: Request) {
       'confirmed'
     );
 
-    const sdk = new OnlinePumpSdk(connection);
+    const sdk =
+      new OnlinePumpSdk(connection);
 
-    const mint = isBuy ? output : input;
+    const mint = isBuy
+      ? output
+      : input;
 
     const safeSlippageBps =
       clampSlippageBps(slippageBps);
@@ -145,9 +148,8 @@ export async function POST(request: Request) {
     if (isBuy) {
       tradeType = 'buy';
 
-      const solAmount = new BN(
-        String(amount)
-      );
+      const solAmount =
+        new BN(String(amount));
 
       const [
         buyState,
@@ -172,7 +174,9 @@ export async function POST(request: Request) {
         );
       }
 
-      if (buyState.bondingCurve.complete) {
+      if (
+        buyState.bondingCurve.complete
+      ) {
         return NextResponse.json(
           {
             error:
@@ -193,6 +197,7 @@ export async function POST(request: Request) {
           bondingCurve:
             buyState.bondingCurve,
           amount: solAmount,
+          quoteMint: NATIVE_MINT,
         });
 
       if (
@@ -211,16 +216,18 @@ export async function POST(request: Request) {
 
       instructions =
         await PUMP_SDK.buyInstructions({
-          ...buyState,
           global,
+          bondingCurveAccountInfo:
+            buyState.bondingCurveAccountInfo,
+          bondingCurve:
+            buyState.bondingCurve,
           mint,
           user,
           amount: expectedOutput,
           solAmount,
           slippage,
           tokenProgram:
-            buyState.tokenProgram ||
-            TOKEN_PROGRAM_ID,
+            buyState.tokenProgram,
         });
     } else {
       tradeType = 'sell';
@@ -274,6 +281,7 @@ export async function POST(request: Request) {
           bondingCurve:
             sellState.bondingCurve,
           amount: tokenAmount,
+          quoteMint: NATIVE_MINT,
         });
 
       if (
@@ -292,16 +300,18 @@ export async function POST(request: Request) {
 
       instructions =
         await PUMP_SDK.sellInstructions({
-          ...sellState,
           global,
+          bondingCurveAccountInfo:
+            sellState.bondingCurveAccountInfo,
+          bondingCurve:
+            sellState.bondingCurve,
           mint,
           user,
           amount: tokenAmount,
           solAmount: expectedOutput,
           slippage,
           tokenProgram:
-            sellState.tokenProgram ||
-            TOKEN_PROGRAM_ID,
+            sellState.tokenProgram,
         });
     }
 
@@ -362,9 +372,6 @@ export async function POST(request: Request) {
             : 'Failed to create Pump trade transaction',
       },
       { status: 500 }
-    );
-  }
-}
     );
   }
 }
