@@ -966,34 +966,19 @@ if (
         `Transaction ready — approve ${action.toLowerCase()} in Phantom.`
       );
 
-      const transaction =
-        VersionedTransaction.deserialize(
-          Uint8Array.from(
-            atob(
-              data.swapTransaction
-            ),
-            (character) =>
-              character.charCodeAt(0)
-          )
-        );
+setTradeStatus(
+  `Sending ${action.toLowerCase()} transaction to Solana...`
+);
 
-      const signed =
-        await provider.signTransaction(
-          transaction
-        );
+const result =
+  await provider.signAndSendTransaction(
+    transaction
+  );
 
-      setTradeStatus(
-        `Sending ${action.toLowerCase()} transaction to Solana...`
-      );
-
-      const signature =
-        await connection.sendRawTransaction(
-          signed.serialize(),
-          {
-            maxRetries: 3,
-            skipPreflight: false,
-          }
-        );
+const signature =
+  typeof result === 'string'
+    ? result
+    : result.signature;
 
       setTradeStatus(
         'Transaction submitted — waiting for confirmation...'
