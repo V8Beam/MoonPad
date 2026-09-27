@@ -902,26 +902,52 @@ export default function Home() {
     );
 
     try {
-      const response = await fetch(
-'/api/pump/trade',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
-          body: JSON.stringify({
-            inputMint,
-            outputMint,
-            amount,
-            userPublicKey:
-              provider.publicKey.toString(),
-          }),
-        }
-      );
+let response = await fetch(
+  '/api/pump/trade',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type':
+        'application/json',
+    },
+    body: JSON.stringify({
+      inputMint,
+      outputMint,
+      amount,
+      userPublicKey:
+        provider.publicKey.toString(),
+    }),
+  }
+);
 
-      const data =
-        await response.json();
+let data =
+  await response.json();
+
+if (
+  !response.ok &&
+  (response.status === 404 ||
+    response.status === 409)
+) {
+  response = await fetch(
+    '/api/swap',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type':
+          'application/json',
+      },
+      body: JSON.stringify({
+        inputMint,
+        outputMint,
+        amount,
+        userPublicKey:
+          provider.publicKey.toString(),
+      }),
+    }
+  );
+
+  data = await response.json();
+}
 
       if (!response.ok) {
         throw new Error(
