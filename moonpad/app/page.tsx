@@ -35,7 +35,7 @@ const SOL_MINT =
   'So11111111111111111111111111111111111111112';
 
 const SOLANA_RPC =
-  'https://api.mainnet-beta.solana.com';
+  'https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY';
 
 type TokenItem = {
   name: string;
