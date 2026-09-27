@@ -903,7 +903,7 @@ export default function Home() {
 
     try {
       const response = await fetch(
-        '/api/swap',
+'/api/pump/trade',
         {
           method: 'POST',
           headers: {
