@@ -298,17 +298,27 @@ export async function POST(request: Request) {
        * SDK receives its automatically detected
        * tokenProgram.
        */
-      instructions =
-        await PUMP_SDK.buyInstructions({
-          ...buyState,
-          global,
-          mint,
-          user,
-          amount:
-            expectedOutput,
-          solAmount,
-          slippage,
-        });
+instructions =
+  await PUMP_SDK.buyInstructions({
+    global,
+    bondingCurveAccountInfo:
+      buyState.bondingCurveAccountInfo,
+    bondingCurve:
+      buyState.bondingCurve,
+    associatedUserAccountInfo:
+      buyState.associatedUserAccountInfo,
+    mint,
+    user,
+    amount:
+      expectedOutput,
+    solAmount,
+    slippage,
+    tokenProgram:
+      buyState.tokenProgram,
+    quoteMint,
+    quoteTokenProgram:
+      buyState.quoteTokenProgram,
+  });
     } else {
       tradeType = 'sell';
 
