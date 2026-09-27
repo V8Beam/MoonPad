@@ -995,35 +995,39 @@ const sendSwap = async ({
         }
       );
 
-    setTradeStatus(
-      'Transaction submitted — waiting for confirmation...'
-    );
+setTradeStatus(
+  'Transaction submitted — checking Solana...'
+);
 
-    const recentBlockhash =
-      transaction.message.recentBlockhash;
-
-    if (
-      typeof data.lastValidBlockHeight ===
-        'number' &&
-      recentBlockhash
-    ) {
-      await connection.confirmTransaction(
-        {
-          signature,
-          blockhash:
-            recentBlockhash,
-          lastValidBlockHeight:
-            data.lastValidBlockHeight,
-        },
-        'confirmed'
-      );
-    } else {
-      await connection.confirmTransaction(
-        signature,
-        'confirmed'
-      );
+const confirmation =
+  await connection.getSignatureStatus(
+    signature,
+    {
+      searchTransactionHistory: true,
     }
+  );
 
+if (
+  confirmation.value?.err
+) {
+  throw new Error(
+    `Transaction failed on Solana: ${JSON.stringify(
+      confirmation.value.err
+    )}`
+  );
+}
+
+if (
+  confirmation.value?.confirmationStatus !==
+    'confirmed' &&
+  confirmation.value?.confirmationStatus !==
+    'finalized'
+) {
+  await connection.confirmTransaction(
+    signature,
+    'confirmed'
+  );
+}
     setLastSignature(signature);
 
     setTradeStatus(
