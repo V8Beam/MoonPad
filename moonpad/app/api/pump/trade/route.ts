@@ -451,12 +451,32 @@ export async function POST(request: Request) {
       error
     );
 
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Failed to create Pump trade transaction';
+
+    if (
+      message.toLowerCase().includes(
+        'bonding curve account not found'
+      ) ||
+      message.toLowerCase().includes(
+        'bonding curve was not found'
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'This token has graduated to PumpSwap.',
+          graduated: true,
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to create Pump trade transaction',
+        error: message,
       },
       { status: 500 }
     );
