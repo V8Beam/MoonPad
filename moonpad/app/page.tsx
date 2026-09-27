@@ -842,208 +842,213 @@ export default function Home() {
     return price;
   };
 
-  const sendSwap = async ({
-    inputMint,
-    outputMint,
-    amount,
-    action,
-  }: {
-    inputMint: string;
-    outputMint: string;
-    amount: string;
-    action: 'Buy' | 'Sell';
-  }) => {
-    const provider = getProvider();
+const sendSwap = async ({
+  inputMint,
+  outputMint,
+  amount,
+  action,
+}: {
+  inputMint: string;
+  outputMint: string;
+  amount: string;
+  action: 'Buy' | 'Sell';
+}) => {
+  const provider = getProvider();
 
-    if (tradeLoading) {
-      throw new Error(
-        'A transaction is already processing.'
-      );
+  if (tradeLoading) {
+    throw new Error(
+      'A transaction is already processing.'
+    );
+  }
+
+  if (
+    !provider ||
+    !provider.publicKey
+  ) {
+    if (isMobileDevice()) {
+      setShowMobileWalletPrompt(true);
     }
 
-    if (
-      !provider ||
-      !provider.publicKey
-    ) {
-      if (isMobileDevice()) {
-        setShowMobileWalletPrompt(true);
+    throw new Error(
+      'Open MoonPad inside Phantom and connect your wallet first.'
+    );
+  }
+
+  if (
+    !amount ||
+    !/^\d+$/.test(amount) ||
+    amount === '0'
+  ) {
+    throw new Error(
+      action === 'Buy'
+        ? 'Enter a valid SOL amount.'
+        : 'Enter a valid token amount.'
+    );
+  }
+
+  if (
+    !isValidMint(inputMint) ||
+    !isValidMint(outputMint)
+  ) {
+    throw new Error(
+      'Invalid token mint address.'
+    );
+  }
+
+  setTradeLoading(true);
+
+  setTradeStatus(
+    `Preparing ${action.toLowerCase()} transaction...`
+  );
+
+  try {
+    let response = await fetch(
+      '/api/pump/trade',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':
+            'application/json',
+        },
+        body: JSON.stringify({
+          inputMint,
+          outputMint,
+          amount,
+          userPublicKey:
+            provider.publicKey.toString(),
+        }),
       }
-
-      throw new Error(
-        'Open MoonPad inside Phantom and connect your wallet first.'
-      );
-    }
-
-    if (
-      !amount ||
-      !/^\d+$/.test(amount) ||
-      amount === '0'
-    ) {
-      throw new Error(
-        action === 'Buy'
-          ? 'Enter a valid SOL amount.'
-          : 'Enter a valid token amount.'
-      );
-    }
-
-    if (
-      !isValidMint(inputMint) ||
-      !isValidMint(outputMint)
-    ) {
-      throw new Error(
-        'Invalid token mint address.'
-      );
-    }
-
-    setTradeLoading(true);
-
-    setTradeStatus(
-      `Preparing ${action.toLowerCase()} transaction...`
     );
 
-    try {
-let response = await fetch(
-  '/api/pump/trade',
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type':
-        'application/json',
-    },
-    body: JSON.stringify({
-      inputMint,
-      outputMint,
-      amount,
-      userPublicKey:
-        provider.publicKey.toString(),
-    }),
-  }
-);
+    let data =
+      await response.json();
 
-let data =
-  await response.json();
-
-if (
-  !response.ok &&
-  (response.status === 404 ||
-    response.status === 409)
-) {
-  response = await fetch(
-    '/api/swap',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type':
-          'application/json',
-      },
-      body: JSON.stringify({
-        inputMint,
-        outputMint,
-        amount,
-        userPublicKey:
-          provider.publicKey.toString(),
-      }),
-    }
-  );
-
-  data = await response.json();
-}
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            `Failed to prepare ${action.toLowerCase()}`
-        );
-      }
-
-      if (!data.swapTransaction) {
-        throw new Error(
-          'Swap transaction was not returned.'
-        );
-      }
-
-      setTradeStatus(
-        `Transaction ready — approve ${action.toLowerCase()} in Phantom.`
-      );
-
-setTradeStatus(
-  `Sending ${action.toLowerCase()} transaction to Solana...`
-);
-
-const result =
-  await provider.signAndSendTransaction(
-    transaction
-  );
-
-const signature =
-  typeof result === 'string'
-    ? result
-    : result.signature;
-
-      setTradeStatus(
-        'Transaction submitted — waiting for confirmation...'
-      );
-
-      const recentBlockhash =
-        transaction.message.recentBlockhash;
-
-      if (
-        typeof data.lastValidBlockHeight ===
-          'number' &&
-        recentBlockhash
-      ) {
-        await connection.confirmTransaction(
-          {
-            signature,
-            blockhash:
-              recentBlockhash,
-            lastValidBlockHeight:
-              data.lastValidBlockHeight,
+    if (
+      !response.ok &&
+      (response.status === 404 ||
+        response.status === 409)
+    ) {
+      response = await fetch(
+        '/api/swap',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':
+              'application/json',
           },
-          'confirmed'
-        );
-      } else {
-        await connection.confirmTransaction(
-          signature,
-          'confirmed'
-        );
-      }
-
-      setLastSignature(signature);
-
-      setTradeStatus(
-        `${action} confirmed: ${signature.slice(
-          0,
-          8
-        )}...`
+          body: JSON.stringify({
+            inputMint,
+            outputMint,
+            amount,
+            userPublicKey:
+              provider.publicKey.toString(),
+          }),
+        }
       );
 
-      addActivity(
-        'Trade',
-        `${action.toLowerCase()} confirmed`
-      );
-
-      notify(
-        `${action} confirmed`
-      );
-
-      await refreshBalance();
-
-      setTokenBalanceRefreshKey(
-        (value) => value + 1
-      );
-
-      if (tradeMint.trim()) {
-        await refreshTokenBalance(
-          tradeMint.trim()
-        );
-      }
-
-      return signature;
-    } finally {
-      setTradeLoading(false);
+      data = await response.json();
     }
-  };
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          `Failed to prepare ${action.toLowerCase()}`
+      );
+    }
+
+    if (!data.swapTransaction) {
+      throw new Error(
+        'Swap transaction was not returned.'
+      );
+    }
+
+    const transaction =
+      VersionedTransaction.deserialize(
+        Uint8Array.from(
+          atob(data.swapTransaction),
+          (character) =>
+            character.charCodeAt(0)
+        )
+      );
+
+    setTradeStatus(
+      `Transaction ready — approve ${action.toLowerCase()} in Phantom.`
+    );
+
+    const result =
+      await provider.signAndSendTransaction(
+        transaction
+      );
+
+    const signature =
+      typeof result === 'string'
+        ? result
+        : result.signature;
+
+    setTradeStatus(
+      'Transaction submitted — waiting for confirmation...'
+    );
+
+    const recentBlockhash =
+      transaction.message.recentBlockhash;
+
+    if (
+      typeof data.lastValidBlockHeight ===
+        'number' &&
+      recentBlockhash
+    ) {
+      await connection.confirmTransaction(
+        {
+          signature,
+          blockhash:
+            recentBlockhash,
+          lastValidBlockHeight:
+            data.lastValidBlockHeight,
+        },
+        'confirmed'
+      );
+    } else {
+      await connection.confirmTransaction(
+        signature,
+        'confirmed'
+      );
+    }
+
+    setLastSignature(signature);
+
+    setTradeStatus(
+      `${action} confirmed: ${signature.slice(
+        0,
+        8
+      )}...`
+    );
+
+    addActivity(
+      'Trade',
+      `${action.toLowerCase()} confirmed`
+    );
+
+    notify(
+      `${action} confirmed`
+    );
+
+    await refreshBalance();
+
+    setTokenBalanceRefreshKey(
+      (value) => value + 1
+    );
+
+    if (tradeMint.trim()) {
+      await refreshTokenBalance(
+        tradeMint.trim()
+      );
+    }
+
+    return signature;
+  } finally {
+    setTradeLoading(false);
+  }
+};
 
   const handleBuy = async () => {
     if (tradeLoading) {
