@@ -180,6 +180,15 @@ export async function POST(request: Request) {
     const mint =
       isBuy ? output : input;
 
+    const tokenProgram =
+      await getMintTokenProgram(
+        connection,
+        mint
+      );
+
+    const quoteMint =
+      new PublicKey(SOL_MINT);
+
     const safeSlippageBps =
       clampSlippageBps(
         slippageBps
@@ -258,6 +267,7 @@ export async function POST(request: Request) {
             buyState.bondingCurve,
           amount:
             solAmount,
+          quoteMint,
         });
 
       if (
@@ -289,8 +299,7 @@ export async function POST(request: Request) {
             expectedOutput,
           solAmount,
           slippage,
-          tokenProgram:
-            buyState.tokenProgram,
+          tokenProgram,
         });
     } else {
       tradeType = 'sell';
@@ -302,7 +311,6 @@ export async function POST(request: Request) {
         sellState,
         global,
         feeConfig,
-        tokenProgram,
       ] = await Promise.all([
         sdk.fetchSellState(
           mint,
@@ -310,10 +318,6 @@ export async function POST(request: Request) {
         ),
         sdk.fetchGlobal(),
         sdk.fetchFeeConfig(),
-        getMintTokenProgram(
-          connection,
-          mint
-        ),
       ]);
 
       if (
