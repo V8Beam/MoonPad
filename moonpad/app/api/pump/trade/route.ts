@@ -5,7 +5,6 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
-import { NATIVE_MINT } from '@solana/spl-token';
 import BN from 'bn.js';
 import {
   OnlinePumpSdk,
@@ -13,6 +12,10 @@ import {
   getBuyTokenAmountFromSolAmount,
   getSellSolAmountFromTokenAmount,
 } from '@pump-fun/pump-sdk';
+import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+} from '@solana/spl-token';
 
 const RPC_URL =
   process.env.SOLANA_RPC_URL ||
@@ -39,6 +42,40 @@ function clampSlippageBps(value: unknown) {
   );
 }
 
+async function getMintTokenProgram(
+  connection: Connection,
+  mint: PublicKey
+) {
+  const account =
+    await connection.getAccountInfo(mint);
+
+  if (!account) {
+    throw new Error(
+      'Token mint account was not found.'
+    );
+  }
+
+  if (
+    account.owner.equals(
+      TOKEN_2022_PROGRAM_ID
+    )
+  ) {
+    return TOKEN_2022_PROGRAM_ID;
+  }
+
+  if (
+    account.owner.equals(
+      TOKEN_PROGRAM_ID
+    )
+  ) {
+    return TOKEN_PROGRAM_ID;
+  }
+
+  throw new Error(
+    'Token mint is not owned by a supported Solana token program.'
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -58,7 +95,10 @@ export async function POST(request: Request) {
       !userPublicKey
     ) {
       return NextResponse.json(
-        { error: 'Missing trade parameters' },
+        {
+          error:
+            'Missing trade parameters',
+        },
         { status: 400 }
       );
     }
@@ -69,12 +109,19 @@ export async function POST(request: Request) {
       new PublicKey(userPublicKey);
     } catch {
       return NextResponse.json(
-        { error: 'Invalid Solana address' },
+        {
+          error:
+            'Invalid Solana address',
+        },
         { status: 400 }
       );
     }
 
-    if (!isPositiveInteger(String(amount))) {
+    if (
+      !isPositiveInteger(
+        String(amount)
+      )
+    ) {
       return NextResponse.json(
         {
           error:
@@ -84,17 +131,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = new PublicKey(userPublicKey);
-    const input = new PublicKey(inputMint);
-    const output = new PublicKey(outputMint);
+    const user =
+      new PublicKey(userPublicKey);
 
-    const isBuy = input.equals(
-      NATIVE_MINT
-    );
+    const input =
+      new PublicKey(inputMint);
 
-    const isSell = output.equals(
-      NATIVE_MINT
-    );
+    const output =
+      new PublicKey(outputMint);
+
+    const isBuy =
+      inputMint === SOL_MINT;
+
+    const isSell =
+      outputMint === SOL_MINT;
 
     if (!isBuy && !isSell) {
       return NextResponse.json(
@@ -109,26 +159,31 @@ export async function POST(request: Request) {
     if (isBuy && isSell) {
       return NextResponse.json(
         {
-          error: 'Invalid trade pair.',
+          error:
+            'Invalid trade pair.',
         },
         { status: 400 }
       );
     }
 
-    const connection = new Connection(
-      RPC_URL,
-      'confirmed'
-    );
+    const connection =
+      new Connection(
+        RPC_URL,
+        'confirmed'
+      );
 
     const sdk =
-      new OnlinePumpSdk(connection);
+      new OnlinePumpSdk(
+        connection
+      );
 
-    const mint = isBuy
-      ? output
-      : input;
+    const mint =
+      isBuy ? output : input;
 
     const safeSlippageBps =
-      clampSlippageBps(slippageBps);
+      clampSlippageBps(
+        slippageBps
+      );
 
     const slippage =
       safeSlippageBps / 100;
@@ -143,7 +198,9 @@ export async function POST(request: Request) {
 
     let instructions;
     let expectedOutput: BN;
-    let tradeType: 'buy' | 'sell';
+    let tradeType:
+      | 'buy'
+      | 'sell';
 
     if (isBuy) {
       tradeType = 'buy';
@@ -164,7 +221,9 @@ export async function POST(request: Request) {
         sdk.fetchFeeConfig(),
       ]);
 
-      if (!buyState.bondingCurve) {
+      if (
+        !buyState.bondingCurve
+      ) {
         return NextResponse.json(
           {
             error:
@@ -192,12 +251,13 @@ export async function POST(request: Request) {
           global,
           feeConfig,
           mintSupply:
-            buyState.bondingCurve
+            buyState
+              .bondingCurve
               .tokenTotalSupply,
           bondingCurve:
             buyState.bondingCurve,
-          amount: solAmount,
-          quoteMint: NATIVE_MINT,
+          amount:
+            solAmount,
         });
 
       if (
@@ -221,9 +281,12 @@ export async function POST(request: Request) {
             buyState.bondingCurveAccountInfo,
           bondingCurve:
             buyState.bondingCurve,
+          associatedUserAccountInfo:
+            buyState.associatedUserAccountInfo,
           mint,
           user,
-          amount: expectedOutput,
+          amount:
+            expectedOutput,
           solAmount,
           slippage,
           tokenProgram:
@@ -239,6 +302,7 @@ export async function POST(request: Request) {
         sellState,
         global,
         feeConfig,
+        tokenProgram,
       ] = await Promise.all([
         sdk.fetchSellState(
           mint,
@@ -246,9 +310,15 @@ export async function POST(request: Request) {
         ),
         sdk.fetchGlobal(),
         sdk.fetchFeeConfig(),
+        getMintTokenProgram(
+          connection,
+          mint
+        ),
       ]);
 
-      if (!sellState.bondingCurve) {
+      if (
+        !sellState.bondingCurve
+      ) {
         return NextResponse.json(
           {
             error:
@@ -259,7 +329,9 @@ export async function POST(request: Request) {
       }
 
       if (
-        sellState.bondingCurve.complete
+        sellState
+          .bondingCurve
+          .complete
       ) {
         return NextResponse.json(
           {
@@ -276,12 +348,13 @@ export async function POST(request: Request) {
           global,
           feeConfig,
           mintSupply:
-            sellState.bondingCurve
+            sellState
+              .bondingCurve
               .tokenTotalSupply,
           bondingCurve:
             sellState.bondingCurve,
-          amount: tokenAmount,
-          quoteMint: NATIVE_MINT,
+          amount:
+            tokenAmount,
         });
 
       if (
@@ -307,11 +380,17 @@ export async function POST(request: Request) {
             sellState.bondingCurve,
           mint,
           user,
-          amount: tokenAmount,
-          solAmount: expectedOutput,
+          amount:
+            tokenAmount,
+          solAmount:
+            expectedOutput,
           slippage,
-          tokenProgram:
-            sellState.tokenProgram,
+          tokenProgram,
+          mayhemMode:
+            sellState
+              .bondingCurve
+              .isMayhemMode ??
+            false,
         });
     }
 
@@ -331,7 +410,8 @@ export async function POST(request: Request) {
     const messageV0 =
       new TransactionMessage({
         payerKey: user,
-        recentBlockhash: blockhash,
+        recentBlockhash:
+          blockhash,
         instructions,
       }).compileToV0Message();
 
@@ -346,11 +426,14 @@ export async function POST(request: Request) {
       ).toString('base64');
 
     return NextResponse.json({
-      transaction: serialized,
-      swapTransaction: serialized,
+      transaction:
+        serialized,
+      swapTransaction:
+        serialized,
       lastValidBlockHeight,
       tradeType,
-      mint: mint.toBase58(),
+      mint:
+        mint.toBase58(),
       expectedOutput:
         expectedOutput.toString(),
       slippageBps:
