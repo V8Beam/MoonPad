@@ -999,33 +999,44 @@ setTradeStatus(
   'Transaction submitted — checking Solana...'
 );
 
-const confirmation =
-  await connection.getSignatureStatus(
-    signature,
-    {
-      searchTransactionHistory: true,
-    }
-  );
+let confirmed = false;
 
-if (
-  confirmation.value?.err
-) {
-  throw new Error(
-    `Transaction failed on Solana: ${JSON.stringify(
-      confirmation.value.err
-    )}`
+for (let attempt = 0; attempt < 30; attempt++) {
+  const status =
+    await connection.getSignatureStatus(
+      signature,
+      {
+        searchTransactionHistory: true,
+      }
+    );
+
+  if (status.value?.err) {
+    throw new Error(
+      `Transaction failed on Solana: ${JSON.stringify(
+        status.value.err
+      )}`
+    );
+  }
+
+  if (
+    status.value?.confirmationStatus ===
+      'confirmed' ||
+    status.value?.confirmationStatus ===
+      'finalized'
+  ) {
+    confirmed = true;
+    break;
+  }
+
+  await new Promise(
+    (resolve) =>
+      setTimeout(resolve, 1000)
   );
 }
 
-if (
-  confirmation.value?.confirmationStatus !==
-    'confirmed' &&
-  confirmation.value?.confirmationStatus !==
-    'finalized'
-) {
-  await connection.confirmTransaction(
-    signature,
-    'confirmed'
+if (!confirmed) {
+  throw new Error(
+    `Transaction was not confirmed after 30 seconds. Check signature ${signature}`
   );
 }
     setLastSignature(signature);
