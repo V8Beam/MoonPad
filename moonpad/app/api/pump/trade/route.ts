@@ -268,7 +268,7 @@ export async function POST(request: Request) {
           amount:
             solAmount,
           quoteMint:
-            buyState.quoteMint,
+            new PublicKey(SOL_MINT),
         });
 
       if (
@@ -301,10 +301,6 @@ export async function POST(request: Request) {
           solAmount,
           slippage,
           tokenProgram,
-          quoteMint:
-            buyState.quoteMint,
-          quoteTokenProgram:
-            buyState.quoteTokenProgram,
         });
     } else {
       tradeType = 'sell';
