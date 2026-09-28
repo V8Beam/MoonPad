@@ -1650,7 +1650,7 @@ const refreshWatchPrice =
       setWatchPrice(
         data.priceUsd ?? null
       );
-
+setDiscoveredToken(data);
       setWatching(true);
 
       addActivity(
