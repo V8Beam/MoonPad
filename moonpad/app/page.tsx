@@ -4522,33 +4522,38 @@ function LaunchModal({
                       }
                     );
 
-                  const transaction =
-                    new Transaction().add(
-                      createInstruction
-                    );
+const {
+  blockhash,
+  lastValidBlockHeight,
+} =
+  await connection.getLatestBlockhash(
+    'confirmed'
+  );
 
-                  const {
-                    blockhash,
-                    lastValidBlockHeight,
-                  } =
-                    await connection.getLatestBlockhash(
-                      'confirmed'
-                    );
+const message =
+  new TransactionMessage({
+    payerKey:
+      creator,
+    recentBlockhash:
+      blockhash,
+    instructions: [
+      createInstruction,
+    ],
+  }).compileToV0Message();
 
-                  transaction.recentBlockhash =
-                    blockhash;
+const transaction =
+  new VersionedTransaction(
+    message
+  );
 
-                  transaction.feePayer =
-                    creator;
+transaction.sign([
+  mintKeypair,
+]);
 
-                  transaction.partialSign(
-                    mintKeypair
-                  );
-
-                  const signed =
-                    await provider.signTransaction(
-                      transaction
-                    );
+const signed =
+  await provider.signTransaction(
+    transaction
+  );
 
                   const signature =
                     await connection.sendRawTransaction(
