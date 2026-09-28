@@ -1590,55 +1590,74 @@ export default function Home() {
     entryPrice,
   ]);
 
-  const refreshWatchPrice =
-    async () => {
-      const mint =
-        tradeMint.trim();
+const refreshWatchPrice =
+  async () => {
+    const mint =
+      tradeMint.trim();
 
-      if (!mint) {
-        notify(
-          'Enter a token mint first.'
+    if (!mint) {
+      notify(
+        'Enter a token mint first.'
+      );
+      return;
+    }
+
+    if (!isValidMint(mint)) {
+      notify(
+        'Enter a valid Solana mint.'
+      );
+      return;
+    }
+
+    try {
+      setLoadingPrice(true);
+
+      const response =
+        await fetch(
+          `/api/token?mint=${encodeURIComponent(
+            mint
+          )}`,
+          {
+            cache: 'no-store',
+          }
         );
-        return;
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            'Unable to find token.'
+        );
       }
 
-      if (!isValidMint(mint)) {
-        notify(
-          'Enter a valid Solana mint.'
-        );
-        return;
-      }
+      setWatchPrice(
+        data.priceUsd ?? null
+      );
 
-      try {
-        setLoadingPrice(true);
+      setWatching(true);
 
-        const price =
-          await getPrice(mint);
+      addActivity(
+        'Token Discovery',
+        `found ${data.name || 'Unknown Token'} (${
+          data.symbol || 'UNKNOWN'
+        })`
+      );
 
-        setWatchPrice(price);
-        setWatching(true);
-
-        addActivity(
-          'Market Monitor',
-          `price updated for ${mint.slice(
-            0,
-            8
-          )}...`
-        );
-
-        notify(
-          'Token price updated'
-        );
-      } catch (error) {
-        notify(
-          error instanceof Error
-            ? error.message
-            : 'Unable to read price.'
-        );
-      } finally {
-        setLoadingPrice(false);
-      }
-    };
+      notify(
+        `${data.name || 'Token'} found`
+      );
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? error.message
+          : 'Unable to find token.'
+      );
+    } finally {
+      setLoadingPrice(false);
+    }
+  };
 
   const saveCreatedToken = (
     token: TokenItem
