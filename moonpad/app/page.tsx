@@ -4555,23 +4555,74 @@ const signed =
     transaction
   );
 
-                  const signature =
-                    await connection.sendRawTransaction(
-                      signed.serialize(),
-                      {
-                        maxRetries: 3,
-                        skipPreflight: false,
-                      }
-                    );
+const serialized =
+  signed.serialize();
 
-                  await connection.confirmTransaction(
-                    {
-                      signature,
-                      blockhash,
-                      lastValidBlockHeight,
-                    },
-                    'confirmed'
-                  );
+const signature =
+  await connection.sendRawTransaction(
+    serialized,
+    {
+      maxRetries: 5,
+      skipPreflight: false,
+      preflightCommitment:
+        'confirmed',
+    }
+  );
+
+let confirmed = false;
+
+while (!confirmed) {
+  const status =
+    await connection.getSignatureStatus(
+      signature,
+      {
+        searchTransactionHistory:
+          true,
+      }
+    );
+
+  if (
+    status.value?.err
+  ) {
+    throw new Error(
+      `Launch transaction failed: ${JSON.stringify(
+        status.value.err
+      )}`
+    );
+  }
+
+  if (
+    status.value?.confirmationStatus ===
+      'confirmed' ||
+    status.value?.confirmationStatus ===
+      'finalized'
+  ) {
+    confirmed = true;
+    break;
+  }
+
+  const currentBlockHeight =
+    await connection.getBlockHeight(
+      'confirmed'
+    );
+
+  if (
+    currentBlockHeight >
+    lastValidBlockHeight
+  ) {
+    throw new Error(
+      `Signature ${signature} expired: block height exceeded.`
+    );
+  }
+
+  await new Promise(
+    (resolve) =>
+      setTimeout(
+        resolve,
+        750
+      )
+  );
+}
 
                   const mint =
                     mintKeypair.publicKey.toString();
