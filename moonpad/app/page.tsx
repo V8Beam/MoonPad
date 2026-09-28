@@ -171,7 +171,22 @@ export default function Home() {
 
   const [watchPrice, setWatchPrice] =
     useState<number | null>(null);
-
+const [discoveredToken, setDiscoveredToken] =
+  useState<{
+    name: string;
+    symbol: string;
+    image: string | null;
+    priceUsd: number | null;
+    marketCap: number | null;
+    fdv: number | null;
+    liquidity: number | null;
+    volume24h: number | null;
+    priceChange24h: number | null;
+    dex: string | null;
+    pairAddress: string | null;
+    url: string | null;
+    pairCount: number;
+  } | null>(null);
   const [loadingPrice, setLoadingPrice] =
     useState(false);
 
