@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+
 import {
   Connection,
   PublicKey,
-  Transaction,
   Keypair,
+  TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
+
 import { PUMP_SDK } from '@pump-fun/pump-sdk';
 import {
   Activity,
