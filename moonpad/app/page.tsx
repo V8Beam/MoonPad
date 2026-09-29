@@ -1346,87 +1346,167 @@ const [discoveredToken, setDiscoveredToken] =
     );
   };
 
-  const startBot = async () => {
-    if (!connected) {
-      notify(
-        'Connect Phantom first.'
-      );
-      return;
-    }
+const startBot = async () => {
+  if (!connected) {
+    notify(
+      'Connect Phantom first.'
+    );
+    return;
+  }
 
-    const mint =
-      tradeMint.trim();
+  const mint =
+    tradeMint.trim();
 
-    if (!mint) {
-      notify(
-        'Enter a token mint.'
-      );
-      return;
-    }
+  if (!mint) {
+    notify(
+      'Enter a token mint.'
+    );
+    return;
+  }
 
-    if (!isValidMint(mint)) {
-      notify(
-        'Enter a valid Solana mint.'
+  if (!isValidMint(mint)) {
+    notify(
+      'Enter a valid Solana mint.'
+    );
+    return;
+  }
+
+  if (
+    !tradeAmount ||
+    Number(tradeAmount) <= 0
+  ) {
+    notify(
+      'Enter the entry amount.'
+    );
+    return;
+  }
+
+  if (
+    !stopLoss ||
+    Number(stopLoss) <= 0
+  ) {
+    notify(
+      'Enter a stop-loss percentage.'
+    );
+    return;
+  }
+
+  if (
+    !takeProfit ||
+    Number(takeProfit) <= 0
+  ) {
+    notify(
+      'Enter a take-profit percentage.'
+    );
+    return;
+  }
+
+  try {
+    const cleanAmount =
+      tradeAmount.trim();
+
+    if (
+      !/^\d+(\.\d+)?$/.test(
+        cleanAmount
+      )
+    ) {
+      throw new Error(
+        'Enter a valid SOL amount.'
       );
-      return;
     }
 
     if (
-      !tradeAmount ||
-      Number(tradeAmount) <= 0
+      solBalance !== null &&
+      Number(cleanAmount) >=
+        solBalance
     ) {
-      notify(
-        'Enter the entry amount.'
+      throw new Error(
+        'Leave enough SOL for network fees.'
       );
-      return;
     }
+
+    const lamports =
+      Math.floor(
+        Number(cleanAmount) *
+          1_000_000_000
+      );
 
     if (
-      !stopLoss ||
-      Number(stopLoss) <= 0
+      !Number.isSafeInteger(
+        lamports
+      ) ||
+      lamports <= 0
     ) {
-      notify(
-        'Enter a stop-loss percentage.'
+      throw new Error(
+        'Entry amount is invalid.'
       );
-      return;
     }
 
-    if (
-      !takeProfit ||
-      Number(takeProfit) <= 0
-    ) {
-      notify(
-        'Enter a take-profit percentage.'
-      );
-      return;
-    }
+    setTradeStatus(
+      'Preparing automatic entry buy...'
+    );
 
-    try {
-      setTradeStatus(
-        'Reading current token price...'
-      );
+    const entryBeforeBuy =
+      await getPrice(mint);
 
-      const price =
-        await getPrice(mint);
+    await sendSwap({
+      inputMint: SOL_MINT,
+      outputMint: mint,
+      amount:
+        lamports.toString(),
+      action: 'Buy',
+    });
 
-      setEntryPrice(price);
-      setCurrentPrice(price);
-      setChangePercent(0);
-      setTriggered(null);
-      setBotEnabled(true);
+    const entryAfterBuy =
+      await getPrice(mint);
 
-      addActivity(
-        'Trading Assistant',
-        `started monitoring ${mint.slice(
-          0,
-          8
-        )}...`
-      );
+    setEntryPrice(
+      entryAfterBuy ||
+        entryBeforeBuy
+    );
 
-      setTradeStatus(
-        `Bot active — entry price: $${formatPrice(
-          price
-        )}`
+    setCurrentPrice(
+      entryAfterBuy ||
+        entryBeforeBuy
+    );
+
+    setChangePercent(0);
+    setTriggered(null);
+    setBotEnabled(true);
+
+    addActivity(
+      'Trading Assistant',
+      `automatic entry buy confirmed for ${mint.slice(
+        0,
+        8
+      )}...`
+    );
+
+    setTradeStatus(
+      `Bot active — entry price: $${formatPrice(
+        entryAfterBuy ||
+          entryBeforeBuy
+      )}`
+    );
+
+    notify(
+      'Entry buy confirmed — assistant enabled'
+    );
+  } catch (error) {
+    console.error(
+      'MoonPad trading assistant error:',
+      error
+    );
+
+    setBotEnabled(false);
+
+    setTradeStatus(
+      error instanceof Error
+        ? error.message
+        : 'Unable to start assistant.'
+    );
+  }
+};
       );
 
       notify(
