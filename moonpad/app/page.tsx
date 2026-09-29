@@ -171,22 +171,7 @@ export default function Home() {
 
   const [watchPrice, setWatchPrice] =
     useState<number | null>(null);
-const [discoveredToken, setDiscoveredToken] =
-  useState<{
-    name: string;
-    symbol: string;
-    image: string | null;
-    priceUsd: number | null;
-    marketCap: number | null;
-    fdv: number | null;
-    liquidity: number | null;
-    volume24h: number | null;
-    priceChange24h: number | null;
-    dex: string | null;
-    pairAddress: string | null;
-    url: string | null;
-    pairCount: number;
-  } | null>(null);
+
   const [loadingPrice, setLoadingPrice] =
     useState(false);
 
@@ -1209,6 +1194,13 @@ const [discoveredToken, setDiscoveredToken] =
         );
       }
 
+      setTradeStatus(
+        'Reading entry price...'
+      );
+
+      const entryBeforeBuy =
+        await getPrice(mint);
+
       await sendSwap({
         inputMint: SOL_MINT,
         outputMint: mint,
@@ -1216,6 +1208,24 @@ const [discoveredToken, setDiscoveredToken] =
           lamports.toString(),
         action: 'Buy',
       });
+
+      let entryAfterBuy =
+        entryBeforeBuy;
+
+      try {
+        entryAfterBuy =
+          await getPrice(mint);
+      } catch {}
+
+      setTradeMint(mint);
+      setEntryPrice(
+        entryAfterBuy
+      );
+      setCurrentPrice(
+        entryAfterBuy
+      );
+      setChangePercent(0);
+      setTriggered(null);
 
       setTradeAmount('');
 
@@ -1314,6 +1324,10 @@ const [discoveredToken, setDiscoveredToken] =
       await refreshTokenBalance(
         mint
       );
+
+      setTokenBalanceRefreshKey(
+        (value) => value + 1
+      );
     } catch (error) {
       console.error(
         'MoonPad sell error:',
@@ -1346,167 +1360,171 @@ const [discoveredToken, setDiscoveredToken] =
     );
   };
 
-const startBot = async () => {
-  if (!connected) {
-    notify(
-      'Connect Phantom first.'
-    );
-    return;
-  }
-
-  const mint =
-    tradeMint.trim();
-
-  if (!mint) {
-    notify(
-      'Enter a token mint.'
-    );
-    return;
-  }
-
-  if (!isValidMint(mint)) {
-    notify(
-      'Enter a valid Solana mint.'
-    );
-    return;
-  }
-
-  if (
-    !tradeAmount ||
-    Number(tradeAmount) <= 0
-  ) {
-    notify(
-      'Enter the entry amount.'
-    );
-    return;
-  }
-
-  if (
-    !stopLoss ||
-    Number(stopLoss) <= 0
-  ) {
-    notify(
-      'Enter a stop-loss percentage.'
-    );
-    return;
-  }
-
-  if (
-    !takeProfit ||
-    Number(takeProfit) <= 0
-  ) {
-    notify(
-      'Enter a take-profit percentage.'
-    );
-    return;
-  }
-
-  try {
-    const cleanAmount =
-      tradeAmount.trim();
-
-    if (
-      !/^\d+(\.\d+)?$/.test(
-        cleanAmount
-      )
-    ) {
-      throw new Error(
-        'Enter a valid SOL amount.'
+  const startBot = async () => {
+    if (!connected) {
+      notify(
+        'Connect Phantom first.'
       );
+      return;
+    }
+
+    const mint =
+      tradeMint.trim();
+
+    if (!mint) {
+      notify(
+        'Enter a token mint.'
+      );
+      return;
+    }
+
+    if (!isValidMint(mint)) {
+      notify(
+        'Enter a valid Solana mint.'
+      );
+      return;
     }
 
     if (
-      solBalance !== null &&
-      Number(cleanAmount) >=
-        solBalance
+      !tradeAmount ||
+      Number(tradeAmount) <= 0
     ) {
-      throw new Error(
-        'Leave enough SOL for network fees.'
+      notify(
+        'Enter the entry amount.'
       );
+      return;
     }
-
-    const lamports =
-      Math.floor(
-        Number(cleanAmount) *
-          1_000_000_000
-      );
 
     if (
-      !Number.isSafeInteger(
-        lamports
-      ) ||
-      lamports <= 0
+      !stopLoss ||
+      Number(stopLoss) <= 0
     ) {
-      throw new Error(
-        'Entry amount is invalid.'
+      notify(
+        'Enter a stop-loss percentage.'
       );
+      return;
     }
 
-    setTradeStatus(
-      'Preparing automatic entry buy...'
-    );
+    if (
+      !takeProfit ||
+      Number(takeProfit) <= 0
+    ) {
+      notify(
+        'Enter a take-profit percentage.'
+      );
+      return;
+    }
 
-    const entryBeforeBuy =
-      await getPrice(mint);
+    try {
+      const cleanAmount =
+        tradeAmount.trim();
 
-    await sendSwap({
-      inputMint: SOL_MINT,
-      outputMint: mint,
-      amount:
-        lamports.toString(),
-      action: 'Buy',
-    });
+      if (
+        !/^\d+(\.\d+)?$/.test(
+          cleanAmount
+        )
+      ) {
+        throw new Error(
+          'Enter a valid SOL amount.'
+        );
+      }
 
-    const entryAfterBuy =
-      await getPrice(mint);
+      if (
+        solBalance !== null &&
+        Number(cleanAmount) >=
+          solBalance
+      ) {
+        throw new Error(
+          'Leave enough SOL for network fees.'
+        );
+      }
 
-    setEntryPrice(
-      entryAfterBuy ||
-        entryBeforeBuy
-    );
+      const lamports =
+        Math.floor(
+          Number(cleanAmount) *
+            1_000_000_000
+        );
 
-    setCurrentPrice(
-      entryAfterBuy ||
-        entryBeforeBuy
-    );
+      if (
+        !Number.isSafeInteger(
+          lamports
+        ) ||
+        lamports <= 0
+      ) {
+        throw new Error(
+          'Entry amount is invalid.'
+        );
+      }
 
-    setChangePercent(0);
-    setTriggered(null);
-    setBotEnabled(true);
+      setTradeStatus(
+        'Preparing automatic entry buy...'
+      );
 
-    addActivity(
-      'Trading Assistant',
-      `automatic entry buy confirmed for ${mint.slice(
-        0,
-        8
-      )}...`
-    );
+      const entryBeforeBuy =
+        await getPrice(mint);
 
-    setTradeStatus(
-      `Bot active — entry price: $${formatPrice(
+      await sendSwap({
+        inputMint: SOL_MINT,
+        outputMint: mint,
+        amount:
+          lamports.toString(),
+        action: 'Buy',
+      });
+
+      const entryAfterBuy =
+        await getPrice(mint);
+
+      setTradeMint(mint);
+      setEntryPrice(
         entryAfterBuy ||
           entryBeforeBuy
-      )}`
-    );
+      );
+      setCurrentPrice(
+        entryAfterBuy ||
+          entryBeforeBuy
+      );
+      setChangePercent(0);
+      setTriggered(null);
 
-    notify(
-      'Entry buy confirmed — assistant enabled'
-    );
-  } catch (error) {
-    console.error(
-      'MoonPad trading assistant error:',
-      error
-    );
+      await refreshTokenBalance(
+        mint
+      );
 
-    setBotEnabled(false);
+      setBotEnabled(true);
 
-    setTradeStatus(
-      error instanceof Error
-        ? error.message
-        : 'Unable to start assistant.'
-    );
-  }
-};
+      addActivity(
+        'Trading Assistant',
+        `automatic entry buy confirmed for ${mint.slice(
+          0,
+          8
+        )}...`
+      );
+
+      setTradeStatus(
+        `Bot active — entry price: $${formatPrice(
+          entryAfterBuy ||
+            entryBeforeBuy
+        )}`
+      );
+
+      notify(
+        'Entry buy confirmed — assistant enabled'
+      );
+    } catch (error) {
+      console.error(
+        'MoonPad trading assistant error:',
+        error
+      );
+
+      setBotEnabled(false);
+
+      setTradeStatus(
+        error instanceof Error
+          ? error.message
+          : 'Unable to start assistant.'
+      );
+    }
+  };
 
   const stopBot = () => {
     setBotEnabled(false);
@@ -1526,253 +1544,260 @@ const startBot = async () => {
   };
 
   useEffect(() => {
-    if (!botEnabled) {
-      return;
-    }
+    const mint =
+      tradeMint.trim();
+
+    const positionOpen =
+      Boolean(
+        tokenBalance &&
+        tokenBalance.rawAmount !==
+          '0'
+      );
 
     if (
-      !tradeMint.trim() ||
-      entryPrice === null
+      !mint ||
+      entryPrice === null ||
+      (!botEnabled &&
+        !positionOpen)
     ) {
       return;
     }
 
     let stopped = false;
 
-const monitor =
-  async () => {
-    try {
-      const mint =
-        tradeMint.trim();
+    const monitor =
+      async () => {
+        try {
+          const price =
+            await getPrice(mint);
 
-      const price =
-        await getPrice(mint);
+          if (stopped) {
+            return;
+          }
 
-      if (stopped) {
-        return;
-      }
+          setCurrentPrice(price);
 
-      setCurrentPrice(price);
+          const percent =
+            ((price - entryPrice) /
+              entryPrice) *
+            100;
 
-      const percent =
-        ((price - entryPrice) /
-          entryPrice) *
-        100;
+          setChangePercent(
+            percent
+          );
 
-      setChangePercent(
-        percent
-      );
+          const stop =
+            Number(stopLoss);
 
-      const stop =
-        Number(stopLoss);
+          const target =
+            Number(takeProfit);
 
-      const target =
-        Number(takeProfit);
-
-      const executeBotSell =
-        async (
-          trigger:
-            | 'STOP-LOSS'
-            | 'TAKE-PROFIT'
-        ) => {
-          try {
-            setTriggered(
-              trigger
-            );
-
-            setBotEnabled(
-              false
-            );
-
-            setTradeStatus(
-              `${trigger} triggered — preparing automatic sell...`
-            );
-
-            const provider =
-              getProvider();
-
-            if (
-              !provider ||
-              !provider.publicKey
-            ) {
-              throw new Error(
-                'Phantom wallet is not connected.'
-              );
-            }
-
-            const owner =
-              provider.publicKey;
-
-            const mintKey =
-              new PublicKey(
-                mint
-              );
-
-            const accounts =
-              await connection.getParsedTokenAccountsByOwner(
-                owner,
-                {
-                  mint: mintKey,
-                },
-                'confirmed'
-              );
-
-            let rawAmount =
-              '0';
-
-            for (
-              const account of
-                accounts.value
-            ) {
-              const parsedData =
-                account.account
-                  .data as any;
-
-              const tokenAmount =
-                parsedData?.parsed
-                  ?.info
-                  ?.tokenAmount;
-
-              if (
-                !tokenAmount
-              ) {
-                continue;
-              }
-
-              const accountRaw =
-                String(
-                  tokenAmount.amount ||
-                    '0'
+          const executeBotSell =
+            async (
+              trigger:
+                | 'STOP-LOSS'
+                | 'TAKE-PROFIT'
+            ) => {
+              try {
+                setTriggered(
+                  trigger
                 );
 
-              rawAmount =
-                (
-                  BigInt(
-                    rawAmount
-                  ) +
-                  BigInt(
-                    accountRaw
-                  )
-                ).toString();
-            }
+                setBotEnabled(
+                  false
+                );
 
-            if (
-              rawAmount ===
-              '0'
-            ) {
-              throw new Error(
-                'No token balance found to sell.'
-              );
-            }
+                setTradeStatus(
+                  `${trigger} triggered — preparing automatic sell...`
+                );
 
-            setTradeStatus(
-              `${trigger} triggered — selling token...`
-            );
+                const provider =
+                  getProvider();
 
-            await sendSwap({
-              inputMint:
-                mint,
-              outputMint:
-                SOL_MINT,
-              amount:
-                rawAmount,
-              action:
-                'Sell',
-            });
+                if (
+                  !provider ||
+                  !provider.publicKey
+                ) {
+                  throw new Error(
+                    'Phantom wallet is not connected.'
+                  );
+                }
 
-            await refreshTokenBalance(
-              mint
-            );
+                const owner =
+                  provider.publicKey;
 
-            await refreshBalance(
-              owner.toString()
-            );
+                const mintKey =
+                  new PublicKey(
+                    mint
+                  );
 
-            setTradeStatus(
-              `${trigger} sell confirmed.`
-            );
+                const accounts =
+                  await connection.getParsedTokenAccountsByOwner(
+                    owner,
+                    {
+                      mint: mintKey,
+                    },
+                    'confirmed'
+                  );
 
-            addActivity(
-              'Trading Assistant',
-              `${trigger.toLowerCase()} sell confirmed at ${percent >= 0 ? '+' : ''}${percent.toFixed(
-                2
-              )}%`
-            );
+                let rawAmount =
+                  '0';
 
-            notify(
-              `${trigger} sell confirmed`
-            );
-          } catch (
-            error
+                for (
+                  const account of
+                    accounts.value
+                ) {
+                  const parsedData =
+                    account.account
+                      .data as any;
+
+                  const tokenAmount =
+                    parsedData?.parsed
+                      ?.info
+                      ?.tokenAmount;
+
+                  if (
+                    !tokenAmount
+                  ) {
+                    continue;
+                  }
+
+                  const accountRaw =
+                    String(
+                      tokenAmount.amount ||
+                        '0'
+                    );
+
+                  rawAmount =
+                    (
+                      BigInt(
+                        rawAmount
+                      ) +
+                      BigInt(
+                        accountRaw
+                      )
+                    ).toString();
+                }
+
+                if (
+                  rawAmount ===
+                  '0'
+                ) {
+                  throw new Error(
+                    'No token balance found to sell.'
+                  );
+                }
+
+                setTradeStatus(
+                  `${trigger} triggered — approve automatic sell in Phantom...`
+                );
+
+                await sendSwap({
+                  inputMint:
+                    mint,
+                  outputMint:
+                    SOL_MINT,
+                  amount:
+                    rawAmount,
+                  action:
+                    'Sell',
+                });
+
+                await refreshTokenBalance(
+                  mint
+                );
+
+                await refreshBalance(
+                  owner.toString()
+                );
+
+                setTradeStatus(
+                  `${trigger} sell confirmed.`
+                );
+
+                addActivity(
+                  'Trading Assistant',
+                  `${trigger.toLowerCase()} sell confirmed at ${percent >= 0 ? '+' : ''}${percent.toFixed(
+                    2
+                  )}%`
+                );
+
+                notify(
+                  `${trigger} sell confirmed`
+                );
+              } catch (
+                error
+              ) {
+                console.error(
+                  'MoonPad automatic sell error:',
+                  error
+                );
+
+                setTradeStatus(
+                  error instanceof Error
+                    ? error.message
+                    : 'Automatic sell failed.'
+                );
+
+                notify(
+                  'Automatic sell failed'
+                );
+              }
+            };
+
+          if (
+            botEnabled &&
+            Number.isFinite(stop) &&
+            stop > 0 &&
+            percent <= -stop
           ) {
-            console.error(
-              'MoonPad automatic sell error:',
-              error
+            await executeBotSell(
+              'STOP-LOSS'
             );
 
+            return;
+          }
+
+          if (
+            botEnabled &&
+            Number.isFinite(target) &&
+            target > 0 &&
+            percent >= target
+          ) {
+            await executeBotSell(
+              'TAKE-PROFIT'
+            );
+
+            return;
+          }
+
+          setTradeStatus(
+            botEnabled
+              ? `Bot active: ${
+                  percent >= 0
+                    ? '+'
+                    : ''
+                }${percent.toFixed(
+                  2
+                )}%`
+              : `Position live: ${
+                  percent >= 0
+                    ? '+'
+                    : ''
+                }${percent.toFixed(
+                  2
+                )}%`
+          );
+        } catch (error) {
+          if (!stopped) {
             setTradeStatus(
               error instanceof Error
                 ? error.message
-                : 'Automatic sell failed.'
-            );
-
-            notify(
-              'Automatic sell failed'
+                : 'Price check failed.'
             );
           }
-        };
-
-      if (
-        Number.isFinite(
-          stop
-        ) &&
-        stop > 0 &&
-        percent <=
-          -stop
-      ) {
-        await executeBotSell(
-          'STOP-LOSS'
-        );
-
-        return;
-      }
-
-      if (
-        Number.isFinite(
-          target
-        ) &&
-        target > 0 &&
-        percent >=
-          target
-      ) {
-        await executeBotSell(
-          'TAKE-PROFIT'
-        );
-
-        return;
-      }
-
-      setTradeStatus(
-        `Bot active: ${
-          percent >= 0
-            ? '+'
-            : ''
-        }${percent.toFixed(
-          2
-        )}%`
-      );
-    } catch (
-      error
-    ) {
-      if (!stopped) {
-        setTradeStatus(
-          error instanceof Error
-            ? error.message
-            : 'Price check failed.'
-        );
-      }
-    }
-  };
+        }
+      };
 
     monitor();
 
@@ -1794,76 +1819,58 @@ const monitor =
     stopLoss,
     takeProfit,
     entryPrice,
+    tokenBalance?.rawAmount,
   ]);
 
-const refreshWatchPrice =
-  async () => {
-    const mint =
-      tradeMint.trim();
+  const refreshWatchPrice =
+    async () => {
+      const mint =
+        tradeMint.trim();
 
-    if (!mint) {
-      notify(
-        'Enter a token mint first.'
-      );
-      return;
-    }
-
-    if (!isValidMint(mint)) {
-      notify(
-        'Enter a valid Solana mint.'
-      );
-      return;
-    }
-
-    try {
-      setLoadingPrice(true);
-
-      const response =
-        await fetch(
-          `/api/token?mint=${encodeURIComponent(
-            mint
-          )}`,
-          {
-            cache: 'no-store',
-          }
+      if (!mint) {
+        notify(
+          'Enter a token mint first.'
         );
-
-      const data =
-        await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            'Unable to find token.'
-        );
+        return;
       }
 
-      setWatchPrice(
-        data.priceUsd ?? null
-      );
-setDiscoveredToken(data);
-      setWatching(true);
+      if (!isValidMint(mint)) {
+        notify(
+          'Enter a valid Solana mint.'
+        );
+        return;
+      }
 
-      addActivity(
-        'Token Discovery',
-        `found ${data.name || 'Unknown Token'} (${
-          data.symbol || 'UNKNOWN'
-        })`
-      );
+      try {
+        setLoadingPrice(true);
 
-      notify(
-        `${data.name || 'Token'} found`
-      );
-    } catch (error) {
-      notify(
-        error instanceof Error
-          ? error.message
-          : 'Unable to find token.'
-      );
-    } finally {
-      setLoadingPrice(false);
-    }
-  };
+        const price =
+          await getPrice(mint);
+
+        setWatchPrice(price);
+        setWatching(true);
+
+        addActivity(
+          'Market Monitor',
+          `price updated for ${mint.slice(
+            0,
+            8
+          )}...`
+        );
+
+        notify(
+          'Token price updated'
+        );
+      } catch (error) {
+        notify(
+          error instanceof Error
+            ? error.message
+            : 'Unable to read price.'
+        );
+      } finally {
+        setLoadingPrice(false);
+      }
+    };
 
   const saveCreatedToken = (
     token: TokenItem
@@ -1906,12 +1913,52 @@ setDiscoveredToken(data);
     );
   };
 
-  const estimatedPnlSol =
-    changePercent !== null &&
-    tradeAmount &&
-    Number(tradeAmount) > 0
-      ? Number(tradeAmount) *
-        (changePercent / 100)
+  const positionOpen =
+    Boolean(
+      tokenBalance &&
+      tokenBalance.rawAmount !==
+        '0'
+    );
+
+  const positionTokenAmount =
+    tokenBalance
+      ? Number(
+          tokenBalance.humanAmount
+        )
+      : null;
+
+  const positionValueUsd =
+    positionOpen &&
+    currentPrice !== null &&
+    positionTokenAmount !== null &&
+    Number.isFinite(
+      positionTokenAmount
+    )
+      ? currentPrice *
+        positionTokenAmount
+      : null;
+
+  const positionPnlUsd =
+    positionOpen &&
+    entryPrice !== null &&
+    currentPrice !== null &&
+    positionTokenAmount !== null &&
+    Number.isFinite(
+      positionTokenAmount
+    )
+      ? (currentPrice -
+          entryPrice) *
+        positionTokenAmount
+      : null;
+
+  const positionPnlPercent =
+    entryPrice !== null &&
+    currentPrice !== null &&
+    entryPrice > 0
+      ? ((currentPrice -
+          entryPrice) /
+          entryPrice) *
+        100
       : null;
 
   const nav = [
@@ -2301,175 +2348,77 @@ setDiscoveredToken(data);
               </div>
             </section>
 
-<section className="section">
-  <div className="section-head">
-    <div>
-      <h3>
-        Market Monitor
-      </h3>
+            <section className="section">
+              <div className="section-head">
+                <div>
+                  <h3>
+                    Market Monitor
+                  </h3>
 
-      <p>
-        Discover live Solana
-        token market data
-      </p>
-    </div>
-  </div>
+                  <p>
+                    Check a Solana
+                    token's live price
+                  </p>
+                </div>
+              </div>
 
-  <div className="bot-panel">
-    <div>
-      <span className="eyebrow">
-        TOKEN DISCOVERY
-      </span>
+              <div className="bot-panel">
+                <div>
+                  <span className="eyebrow">
+                    LIVE PRICE
+                  </span>
 
-      <h3>
-        Find a token
-      </h3>
+                  <h3>
+                    Token monitor
+                  </h3>
 
-      <p>
-        Enter any Solana token
-        mint to discover its
-        market data.
-      </p>
-    </div>
+                  <p>
+                    Enter any Solana
+                    token mint to read
+                    its current Jupiter
+                    price.
+                  </p>
+                </div>
 
-    <div className="trade-controls">
-      <input
-        value={
-          tradeMint
-        }
-        onChange={(e) =>
-          setTradeMint(
-            e.target.value
-          )
-        }
-        placeholder="Token mint address"
-      />
+                <div className="trade-controls">
+                  <input
+                    value={
+                      tradeMint
+                    }
+                    onChange={(e) =>
+                      setTradeMint(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Token mint address"
+                  />
 
-      <button
-        onClick={
-          refreshWatchPrice
-        }
-        disabled={
-          loadingPrice
-        }
-      >
-        {loadingPrice
-          ? 'Discovering...'
-          : 'Find Token'}
-      </button>
-    </div>
-  </div>
+                  <button
+                    onClick={
+                      refreshWatchPrice
+                    }
+                    disabled={
+                      loadingPrice
+                    }
+                  >
+                    {loadingPrice
+                      ? 'Reading...'
+                      : 'Check Price'}
+                  </button>
 
-  {discoveredToken && (
-    <div
-      className="bot-panel"
-      style={{
-        marginTop: '16px',
-      }}
-    >
-      <div>
-        <span className="eyebrow">
-          TOKEN FOUND
-        </span>
-
-        <h3>
-          {discoveredToken.name}
-        </h3>
-
-        <p>
-          $
-          {discoveredToken.symbol}
-        </p>
-      </div>
-
-      <div className="trade-controls">
-        <span>
-          Price: $
-          {discoveredToken.priceUsd !==
-          null
-            ? formatPrice(
-                discoveredToken.priceUsd
-              )
-            : 'N/A'}
-        </span>
-
-        <span>
-          Market Cap: $
-          {discoveredToken.marketCap !==
-          null
-            ? formatPrice(
-                discoveredToken.marketCap
-              )
-            : 'N/A'}
-        </span>
-
-        <span>
-          Liquidity: $
-          {discoveredToken.liquidity !==
-          null
-            ? formatPrice(
-                discoveredToken.liquidity
-              )
-            : 'N/A'}
-        </span>
-
-        <span>
-          24h Volume: $
-          {discoveredToken.volume24h !==
-          null
-            ? formatPrice(
-                discoveredToken.volume24h
-              )
-            : 'N/A'}
-        </span>
-
-        <span>
-          24h Change:{' '}
-          {discoveredToken.priceChange24h !==
-          null
-            ? `${
-                discoveredToken.priceChange24h >=
-                0
-                  ? '+'
-                  : ''
-              }${discoveredToken.priceChange24h.toFixed(
-                2
-              )}%`
-            : 'N/A'}
-        </span>
-
-        <span>
-          DEX:{' '}
-          {discoveredToken.dex ||
-            'N/A'}
-        </span>
-
-        <span>
-          Markets:{' '}
-          {discoveredToken.pairCount}
-        </span>
-      </div>
-    </div>
-  )}
-
-  {watching &&
-    watchPrice !== null &&
-    !discoveredToken && (
-      <div
-        className="bot-panel"
-        style={{
-          marginTop: '16px',
-        }}
-      >
-        <span>
-          Current price: $
-          {formatPrice(
-            watchPrice
-          )}
-        </span>
-      </div>
-    )}
-</section>
+                  {watching &&
+                    watchPrice !==
+                      null && (
+                      <span>
+                        Current price: $
+                        {formatPrice(
+                          watchPrice
+                        )}
+                      </span>
+                    )}
+                </div>
+              </div>
+            </section>
 
             <section className="section">
               <div className="section-head">
@@ -2942,6 +2891,157 @@ setDiscoveredToken(data);
             <div className="bot-panel">
               <div>
                 <span className="eyebrow">
+                  LIVE POSITION
+                </span>
+
+                <h3>
+                  Position &amp; P&amp;L
+                </h3>
+
+                <p>
+                  MoonPad refreshes the
+                  position price every five
+                  seconds while a token balance
+                  is open.
+                </p>
+              </div>
+
+              <div className="token-stats">
+                <div>
+                  <small>
+                    Status
+                  </small>
+
+                  <strong>
+                    {positionOpen
+                      ? 'OPEN'
+                      : 'CLOSED'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Token balance
+                  </small>
+
+                  <strong>
+                    {positionOpen &&
+                    tokenBalance
+                      ? formatTokenBalance(
+                          tokenBalance.humanAmount
+                        )
+                      : '0'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Position value
+                  </small>
+
+                  <strong>
+                    {positionValueUsd !==
+                    null
+                      ? `$${formatUsd(
+                          positionValueUsd
+                        )}`
+                      : '—'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Entry price
+                  </small>
+
+                  <strong>
+                    {entryPrice !==
+                    null
+                      ? `$${formatPrice(
+                          entryPrice
+                        )}`
+                      : '—'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Current price
+                  </small>
+
+                  <strong>
+                    {currentPrice !==
+                    null
+                      ? `$${formatPrice(
+                          currentPrice
+                        )}`
+                      : '—'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    P&amp;L
+                  </small>
+
+                  <strong
+                    className={
+                      positionPnlUsd !==
+                        null &&
+                      positionPnlUsd >=
+                        0
+                        ? 'up'
+                        : ''
+                    }
+                  >
+                    {positionPnlUsd !==
+                    null
+                      ? `${positionPnlUsd >= 0 ? '+' : '-'}$${formatUsd(
+                          Math.abs(
+                            positionPnlUsd
+                          )
+                        )}`
+                      : '—'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    P&amp;L %
+                  </small>
+
+                  <strong
+                    className={
+                      positionPnlPercent !==
+                        null &&
+                      positionPnlPercent >=
+                        0
+                        ? 'up'
+                        : ''
+                    }
+                  >
+                    {positionPnlPercent !==
+                    null
+                      ? `${positionPnlPercent >= 0 ? '+' : ''}${positionPnlPercent.toFixed(
+                          2
+                        )}%`
+                      : '—'}
+                  </strong>
+                </div>
+              </div>
+
+              <span>
+                P&amp;L is an unrealized estimate
+                based on the token's current
+                balance and price. Network fees,
+                slippage, and partial sells are
+                not included yet.
+              </span>
+            </div>
+
+            <div className="bot-panel">
+              <div>
+                <span className="eyebrow">
                   AUTOMATED TRADING
                 </span>
 
@@ -2950,11 +3050,12 @@ setDiscoveredToken(data);
                 </h3>
 
                 <p>
-                  MoonPad monitors the
-                  token price every five
-                  seconds and detects your
-                  stop-loss or take-profit
-                  threshold.
+                  MoonPad can buy the token,
+                  monitor the live position, and
+                  prepare a full-balance sell when
+                  your stop-loss or take-profit is
+                  reached. Phantom approval is still
+                  required for every transaction.
                 </p>
               </div>
 
@@ -3049,67 +3150,9 @@ setDiscoveredToken(data);
                     : 'Enable'}
                 </button>
 
-                {entryPrice !==
-                    null && (
+                {tradeStatus && (
                   <span>
-                    Entry: $
-                    {formatPrice(
-                      entryPrice
-                    )}
-                  </span>
-                )}
-
-                {currentPrice !==
-                    null && (
-                  <span>
-                    Current: $
-                    {formatPrice(
-                      currentPrice
-                    )}
-                  </span>
-                )}
-
-                {changePercent !==
-                    null && (
-                  <span
-                    className={
-                      changePercent >=
-                      0
-                        ? 'up'
-                        : ''
-                    }
-                  >
-                    P&amp;L:{' '}
-                    {changePercent >=
-                    0
-                      ? '+'
-                      : ''}
-                    {changePercent.toFixed(
-                      2
-                    )}
-                    %
-                  </span>
-                )}
-
-                {estimatedPnlSol !==
-                    null && (
-                  <span
-                    className={
-                      estimatedPnlSol >=
-                      0
-                        ? 'up'
-                        : ''
-                    }
-                  >
-                    Estimated P&amp;L:{' '}
-                    {estimatedPnlSol >=
-                      0
-                      ? '+'
-                      : '-'}
-                    {Math.abs(
-                      estimatedPnlSol
-                    ).toFixed(6)}{' '}
-                    SOL
+                    {tradeStatus}
                   </span>
                 )}
 
@@ -3124,113 +3167,87 @@ setDiscoveredToken(data);
                     </b>
 
                     <small>
-                      MoonPad detected
-                      the condition.
-                      Phantom approval
-                      is still required
-                      for the actual
-                      transaction.
+                      MoonPad detected the
+                      condition and prepared the
+                      sell. Phantom approval is still
+                      required for the transaction.
                     </small>
-
-                    <button
-                      className="primary"
-                      onClick={() => {
-                        setTradeStatus(
-                          `${triggered} detected. Enter the token amount above and press Sell to approve the transaction in Phantom.`
-                        );
-
-                        setTriggered(
-                          null
-                        );
-                      }}
-                    >
-                      Prepare Manual Sell
-                    </button>
                   </div>
                 )}
 
-                {tradeStatus && (
-                  <span>
-                    {tradeStatus}
-                  </span>
+                {lastSignature && (
+                  <a
+                    href={`https://solscan.io/tx/${lastSignature}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View transaction
+                    <ExternalLink
+                      size={14}
+                    />
+                  </a>
                 )}
               </div>
             </div>
 
-            <div className="section">
-              <div className="section-head">
-                <div>
-                  <h3>
-                    Execution model
-                  </h3>
+            <div className="bot-panel">
+              <div>
+                <span className="eyebrow">
+                  RECENT POSITION ACTIVITY
+                </span>
 
-                  <p>
-                    MoonPad separates
-                    wallet approval from
-                    market monitoring.
-                  </p>
-                </div>
+                <h3>
+                  Trade history
+                </h3>
+
+                <p>
+                  Recent MoonPad trades and
+                  assistant events for this
+                  workspace.
+                </p>
               </div>
 
-              <div className="settings-grid">
-                <div className="setting">
-                  <Wallet
-                    size={18}
-                  />
+              <div className="activity-list">
+                {activity
+                  .filter(
+                    (item) =>
+                      item.actor ===
+                        'Trade' ||
+                      item.actor ===
+                        'Trading Assistant'
+                  )
+                  .slice(0, 8)
+                  .map((item, index) => (
+                    <div
+                      className="activity-row"
+                      key={`${item.time}-${item.actor}-${index}`}
+                    >
+                      <div>
+                        <b>
+                          {item.actor}
+                        </b>
+                        <span>
+                          {item.action}
+                        </span>
+                      </div>
 
-                  <div>
-                    <b>
-                      Phantom
-                      approval
-                    </b>
+                      <small>
+                        {item.time}
+                      </small>
+                    </div>
+                  ))}
 
-                    <span>
-                      User signs
-                      transactions
-                      directly.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="setting">
-                  <Gauge
-                    size={18}
-                  />
-
-                  <div>
-                    <b>
-                      Price
-                      monitoring
-                    </b>
-
-                    <span>
-                      Jupiter price
-                      data is checked
-                      every 5 seconds.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="setting">
-                  <Zap
-                    size={18}
-                  />
-
-                  <div>
-                    <b>
-                      Trigger
-                      detection
-                    </b>
-
-                    <span>
-                      Stop-loss and
-                      take-profit
-                      conditions are
-                      calculated
-                      locally.
-                    </span>
-                  </div>
-                </div>
+                {activity.filter(
+                  (item) =>
+                    item.actor ===
+                      'Trade' ||
+                    item.actor ===
+                      'Trading Assistant'
+                ).length === 0 && (
+                  <span>
+                    No position activity yet.
+                  </span>
+                )}
               </div>
             </div>
           </PageShell>
@@ -4028,6 +4045,34 @@ function formatPrice(
   }
 
   return price.toPrecision(6);
+}
+
+function formatUsd(
+  value: number
+) {
+  if (!Number.isFinite(value)) {
+    return '0.00';
+  }
+
+  if (value >= 1000) {
+    return value.toLocaleString(
+      undefined,
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
+  }
+
+  if (value >= 1) {
+    return value.toFixed(2);
+  }
+
+  if (value >= 0.01) {
+    return value.toFixed(4);
+  }
+
+  return value.toPrecision(4);
 }
 
 function formatTokenBalance(
