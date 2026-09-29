@@ -2110,77 +2110,175 @@ setDiscoveredToken(data);
               </div>
             </section>
 
-            <section className="section">
-              <div className="section-head">
-                <div>
-                  <h3>
-                    Market Monitor
-                  </h3>
+<section className="section">
+  <div className="section-head">
+    <div>
+      <h3>
+        Market Monitor
+      </h3>
 
-                  <p>
-                    Check a Solana
-                    token's live price
-                  </p>
-                </div>
-              </div>
+      <p>
+        Discover live Solana
+        token market data
+      </p>
+    </div>
+  </div>
 
-              <div className="bot-panel">
-                <div>
-                  <span className="eyebrow">
-                    LIVE PRICE
-                  </span>
+  <div className="bot-panel">
+    <div>
+      <span className="eyebrow">
+        TOKEN DISCOVERY
+      </span>
 
-                  <h3>
-                    Token monitor
-                  </h3>
+      <h3>
+        Find a token
+      </h3>
 
-                  <p>
-                    Enter any Solana
-                    token mint to read
-                    its current Jupiter
-                    price.
-                  </p>
-                </div>
+      <p>
+        Enter any Solana token
+        mint to discover its
+        market data.
+      </p>
+    </div>
 
-                <div className="trade-controls">
-                  <input
-                    value={
-                      tradeMint
-                    }
-                    onChange={(e) =>
-                      setTradeMint(
-                        e.target.value
-                      )
-                    }
-                    placeholder="Token mint address"
-                  />
+    <div className="trade-controls">
+      <input
+        value={
+          tradeMint
+        }
+        onChange={(e) =>
+          setTradeMint(
+            e.target.value
+          )
+        }
+        placeholder="Token mint address"
+      />
 
-                  <button
-                    onClick={
-                      refreshWatchPrice
-                    }
-                    disabled={
-                      loadingPrice
-                    }
-                  >
-                    {loadingPrice
-                      ? 'Reading...'
-                      : 'Check Price'}
-                  </button>
+      <button
+        onClick={
+          refreshWatchPrice
+        }
+        disabled={
+          loadingPrice
+        }
+      >
+        {loadingPrice
+          ? 'Discovering...'
+          : 'Find Token'}
+      </button>
+    </div>
+  </div>
 
-                  {watching &&
-                    watchPrice !==
-                      null && (
-                      <span>
-                        Current price: $
-                        {formatPrice(
-                          watchPrice
-                        )}
-                      </span>
-                    )}
-                </div>
-              </div>
-            </section>
+  {discoveredToken && (
+    <div
+      className="bot-panel"
+      style={{
+        marginTop: '16px',
+      }}
+    >
+      <div>
+        <span className="eyebrow">
+          TOKEN FOUND
+        </span>
+
+        <h3>
+          {discoveredToken.name}
+        </h3>
+
+        <p>
+          $
+          {discoveredToken.symbol}
+        </p>
+      </div>
+
+      <div className="trade-controls">
+        <span>
+          Price: $
+          {discoveredToken.priceUsd !==
+          null
+            ? formatPrice(
+                discoveredToken.priceUsd
+              )
+            : 'N/A'}
+        </span>
+
+        <span>
+          Market Cap: $
+          {discoveredToken.marketCap !==
+          null
+            ? formatPrice(
+                discoveredToken.marketCap
+              )
+            : 'N/A'}
+        </span>
+
+        <span>
+          Liquidity: $
+          {discoveredToken.liquidity !==
+          null
+            ? formatPrice(
+                discoveredToken.liquidity
+              )
+            : 'N/A'}
+        </span>
+
+        <span>
+          24h Volume: $
+          {discoveredToken.volume24h !==
+          null
+            ? formatPrice(
+                discoveredToken.volume24h
+              )
+            : 'N/A'}
+        </span>
+
+        <span>
+          24h Change:{' '}
+          {discoveredToken.priceChange24h !==
+          null
+            ? `${
+                discoveredToken.priceChange24h >=
+                0
+                  ? '+'
+                  : ''
+              }${discoveredToken.priceChange24h.toFixed(
+                2
+              )}%`
+            : 'N/A'}
+        </span>
+
+        <span>
+          DEX:{' '}
+          {discoveredToken.dex ||
+            'N/A'}
+        </span>
+
+        <span>
+          Markets:{' '}
+          {discoveredToken.pairCount}
+        </span>
+      </div>
+    </div>
+  )}
+
+  {watching &&
+    watchPrice !== null &&
+    !discoveredToken && (
+      <div
+        className="bot-panel"
+        style={{
+          marginTop: '16px',
+        }}
+      >
+        <span>
+          Current price: $
+          {formatPrice(
+            watchPrice
+          )}
+        </span>
+      </div>
+    )}
+</section>
 
             <section className="section">
               <div className="section-head">
