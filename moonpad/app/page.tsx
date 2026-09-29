@@ -1539,116 +1539,240 @@ const startBot = async () => {
 
     let stopped = false;
 
-    const monitor =
-      async () => {
-        try {
-          const price =
-            await getPrice(
-              tradeMint.trim()
-            );
+const monitor =
+  async () => {
+    try {
+      const mint =
+        tradeMint.trim();
 
-          if (stopped) {
-            return;
-          }
+      const price =
+        await getPrice(mint);
 
-          setCurrentPrice(price);
+      if (stopped) {
+        return;
+      }
 
-          const percent =
-            ((price - entryPrice) /
-              entryPrice) *
-            100;
+      setCurrentPrice(price);
 
-          setChangePercent(
-            percent
-          );
+      const percent =
+        ((price - entryPrice) /
+          entryPrice) *
+        100;
 
-          const stop =
-            Number(stopLoss);
+      setChangePercent(
+        percent
+      );
 
-          const target =
-            Number(takeProfit);
+      const stop =
+        Number(stopLoss);
 
-          if (
-            Number.isFinite(stop) &&
-            stop > 0 &&
-            percent <= -stop
-          ) {
+      const target =
+        Number(takeProfit);
+
+      const executeBotSell =
+        async (
+          trigger:
+            | 'STOP-LOSS'
+            | 'TAKE-PROFIT'
+        ) => {
+          try {
             setTriggered(
-              'STOP-LOSS'
+              trigger
             );
 
-            setBotEnabled(false);
+            setBotEnabled(
+              false
+            );
 
             setTradeStatus(
-              `STOP-LOSS TRIGGERED: ${percent.toFixed(
-                2
-              )}%`
+              `${trigger} triggered — preparing automatic sell...`
+            );
+
+            const provider =
+              getProvider();
+
+            if (
+              !provider ||
+              !provider.publicKey
+            ) {
+              throw new Error(
+                'Phantom wallet is not connected.'
+              );
+            }
+
+            const owner =
+              provider.publicKey;
+
+            const mintKey =
+              new PublicKey(
+                mint
+              );
+
+            const accounts =
+              await connection.getParsedTokenAccountsByOwner(
+                owner,
+                {
+                  mint: mintKey,
+                },
+                'confirmed'
+              );
+
+            let rawAmount =
+              '0';
+
+            for (
+              const account of
+                accounts.value
+            ) {
+              const parsedData =
+                account.account
+                  .data as any;
+
+              const tokenAmount =
+                parsedData?.parsed
+                  ?.info
+                  ?.tokenAmount;
+
+              if (
+                !tokenAmount
+              ) {
+                continue;
+              }
+
+              const accountRaw =
+                String(
+                  tokenAmount.amount ||
+                    '0'
+                );
+
+              rawAmount =
+                (
+                  BigInt(
+                    rawAmount
+                  ) +
+                  BigInt(
+                    accountRaw
+                  )
+                ).toString();
+            }
+
+            if (
+              rawAmount ===
+              '0'
+            ) {
+              throw new Error(
+                'No token balance found to sell.'
+              );
+            }
+
+            setTradeStatus(
+              `${trigger} triggered — selling token...`
+            );
+
+            await sendSwap({
+              inputMint:
+                mint,
+              outputMint:
+                SOL_MINT,
+              amount:
+                rawAmount,
+              action:
+                'Sell',
+            });
+
+            await refreshTokenBalance(
+              mint
+            );
+
+            await refreshBalance(
+              owner.toString()
+            );
+
+            setTradeStatus(
+              `${trigger} sell confirmed.`
             );
 
             addActivity(
               'Trading Assistant',
-              `stop-loss triggered at ${percent.toFixed(
+              `${trigger.toLowerCase()} sell confirmed at ${percent >= 0 ? '+' : ''}${percent.toFixed(
                 2
               )}%`
             );
 
             notify(
-              'Stop-loss triggered'
+              `${trigger} sell confirmed`
             );
-
-            return;
-          }
-
-          if (
-            Number.isFinite(target) &&
-            target > 0 &&
-            percent >= target
+          } catch (
+            error
           ) {
-            setTriggered(
-              'TAKE-PROFIT'
+            console.error(
+              'MoonPad automatic sell error:',
+              error
             );
 
-            setBotEnabled(false);
-
-            setTradeStatus(
-              `TAKE-PROFIT TRIGGERED: +${percent.toFixed(
-                2
-              )}%`
-            );
-
-            addActivity(
-              'Trading Assistant',
-              `take-profit triggered at +${percent.toFixed(
-                2
-              )}%`
-            );
-
-            notify(
-              'Take-profit triggered'
-            );
-
-            return;
-          }
-
-          setTradeStatus(
-            `Bot active: ${
-              percent >= 0
-                ? '+'
-                : ''
-            }${percent.toFixed(
-              2
-            )}%`
-          );
-        } catch (error) {
-          if (!stopped) {
             setTradeStatus(
               error instanceof Error
                 ? error.message
-                : 'Price check failed.'
+                : 'Automatic sell failed.'
+            );
+
+            notify(
+              'Automatic sell failed'
             );
           }
-        }
-      };
+        };
+
+      if (
+        Number.isFinite(
+          stop
+        ) &&
+        stop > 0 &&
+        percent <=
+          -stop
+      ) {
+        await executeBotSell(
+          'STOP-LOSS'
+        );
+
+        return;
+      }
+
+      if (
+        Number.isFinite(
+          target
+        ) &&
+        target > 0 &&
+        percent >=
+          target
+      ) {
+        await executeBotSell(
+          'TAKE-PROFIT'
+        );
+
+        return;
+      }
+
+      setTradeStatus(
+        `Bot active: ${
+          percent >= 0
+            ? '+'
+            : ''
+        }${percent.toFixed(
+          2
+        )}%`
+      );
+    } catch (
+      error
+    ) {
+      if (!stopped) {
+        setTradeStatus(
+          error instanceof Error
+            ? error.message
+            : 'Price check failed.'
+        );
+      }
+    }
+  };
 
     monitor();
 
