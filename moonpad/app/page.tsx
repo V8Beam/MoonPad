@@ -1507,19 +1507,6 @@ const startBot = async () => {
     );
   }
 };
-      );
-
-      notify(
-        'Trading assistant enabled'
-      );
-    } catch (error) {
-      setTradeStatus(
-        error instanceof Error
-          ? error.message
-          : 'Unable to start assistant.'
-      );
-    }
-  };
 
   const stopBot = () => {
     setBotEnabled(false);
