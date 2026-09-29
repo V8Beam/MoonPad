@@ -291,22 +291,6 @@ export default function Home() {
     );
   };
 
-  const isProbablyPhantomMobileBrowser = () => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
-    const userAgent =
-      navigator.userAgent.toLowerCase();
-
-    return (
-      userAgent.includes('phantom') ||
-      Boolean(
-        (window as any).phantom?.solana
-      )
-    );
-  };
-
   const openMoonPadInPhantom = () => {
     if (typeof window === 'undefined') {
       return;
@@ -1938,28 +1922,42 @@ export default function Home() {
         positionTokenAmount
       : null;
 
-  const positionPnlUsd =
+  const positionCostUsd =
     positionOpen &&
     entryPrice !== null &&
-    currentPrice !== null &&
     positionTokenAmount !== null &&
     Number.isFinite(
       positionTokenAmount
     )
-      ? (currentPrice -
-          entryPrice) *
+      ? entryPrice *
         positionTokenAmount
       : null;
 
+  const positionPnlUsd =
+    positionOpen &&
+    positionCostUsd !== null &&
+    positionValueUsd !== null
+      ? positionValueUsd -
+        positionCostUsd
+      : null;
+
   const positionPnlPercent =
-    entryPrice !== null &&
-    currentPrice !== null &&
-    entryPrice > 0
-      ? ((currentPrice -
-          entryPrice) /
-          entryPrice) *
+    positionCostUsd !== null &&
+    positionCostUsd > 0 &&
+    positionPnlUsd !== null
+      ? (positionPnlUsd /
+          positionCostUsd) *
         100
       : null;
+
+  const positionDirection =
+    positionPnlUsd === null
+      ? 'WAITING'
+      : positionPnlUsd > 0
+      ? 'PROFIT'
+      : positionPnlUsd < 0
+      ? 'LOSS'
+      : 'FLAT';
 
   const nav = [
     [
@@ -2899,23 +2897,40 @@ export default function Home() {
                 </h3>
 
                 <p>
-                  MoonPad refreshes the
-                  position price every five
-                  seconds while a token balance
-                  is open.
+                  Live position tracking
+                  updates the token price every
+                  five seconds while a position is
+                  open.
                 </p>
               </div>
 
               <div className="token-stats">
                 <div>
                   <small>
-                    Status
+                    Position
                   </small>
 
                   <strong>
                     {positionOpen
                       ? 'OPEN'
                       : 'CLOSED'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Direction
+                  </small>
+
+                  <strong
+                    className={
+                      positionDirection ===
+                      'PROFIT'
+                        ? 'up'
+                        : ''
+                    }
+                  >
+                    {positionDirection}
                   </strong>
                 </div>
 
@@ -2931,21 +2946,6 @@ export default function Home() {
                           tokenBalance.humanAmount
                         )
                       : '0'}
-                  </strong>
-                </div>
-
-                <div>
-                  <small>
-                    Position value
-                  </small>
-
-                  <strong>
-                    {positionValueUsd !==
-                    null
-                      ? `$${formatUsd(
-                          positionValueUsd
-                        )}`
-                      : '—'}
                   </strong>
                 </div>
 
@@ -2981,7 +2981,37 @@ export default function Home() {
 
                 <div>
                   <small>
-                    P&amp;L
+                    Invested value
+                  </small>
+
+                  <strong>
+                    {positionCostUsd !==
+                    null
+                      ? `$${formatUsd(
+                          positionCostUsd
+                        )}`
+                      : '—'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Current value
+                  </small>
+
+                  <strong>
+                    {positionValueUsd !==
+                    null
+                      ? `$${formatUsd(
+                          positionValueUsd
+                        )}`
+                      : '—'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Unrealized P&amp;L
                   </small>
 
                   <strong
@@ -3007,7 +3037,7 @@ export default function Home() {
 
                 <div>
                   <small>
-                    P&amp;L %
+                    ROI
                   </small>
 
                   <strong
@@ -3031,11 +3061,12 @@ export default function Home() {
               </div>
 
               <span>
-                P&amp;L is an unrealized estimate
-                based on the token's current
-                balance and price. Network fees,
-                slippage, and partial sells are
-                not included yet.
+                This is an unrealized estimate from
+                the tracked entry/current price and
+                current token balance. Actual realized
+                P&amp;L will later account for execution
+                price, fees, slippage, and partial
+                sells.
               </span>
             </div>
 
@@ -3226,6 +3257,7 @@ export default function Home() {
                         <b>
                           {item.actor}
                         </b>
+
                         <span>
                           {item.action}
                         </span>
@@ -3455,6 +3487,7 @@ export default function Home() {
               }}
             >
               <Icon size={19} />
+
               <span>
                 {label === 'Launch Token'
                   ? 'Launch'
@@ -4890,107 +4923,107 @@ function LaunchModal({
                       }
                     );
 
-const {
-  blockhash,
-  lastValidBlockHeight,
-} =
-  await connection.getLatestBlockhash(
-    'confirmed'
-  );
+                  const {
+                    blockhash,
+                    lastValidBlockHeight,
+                  } =
+                    await connection.getLatestBlockhash(
+                      'confirmed'
+                    );
 
-const message =
-  new TransactionMessage({
-    payerKey:
-      creator,
-    recentBlockhash:
-      blockhash,
-    instructions: [
-      createInstruction,
-    ],
-  }).compileToV0Message();
+                  const message =
+                    new TransactionMessage({
+                      payerKey:
+                        creator,
+                      recentBlockhash:
+                        blockhash,
+                      instructions: [
+                        createInstruction,
+                      ],
+                    }).compileToV0Message();
 
-const transaction =
-  new VersionedTransaction(
-    message
-  );
+                  const transaction =
+                    new VersionedTransaction(
+                      message
+                    );
 
-transaction.sign([
-  mintKeypair,
-]);
+                  transaction.sign([
+                    mintKeypair,
+                  ]);
 
-const signed =
-  await provider.signTransaction(
-    transaction
-  );
+                  const signed =
+                    await provider.signTransaction(
+                      transaction
+                    );
 
-const serialized =
-  signed.serialize();
+                  const serialized =
+                    signed.serialize();
 
-const signature =
-  await connection.sendRawTransaction(
-    serialized,
-    {
-      maxRetries: 5,
-      skipPreflight: false,
-      preflightCommitment:
-        'confirmed',
-    }
-  );
+                  const signature =
+                    await connection.sendRawTransaction(
+                      serialized,
+                      {
+                        maxRetries: 5,
+                        skipPreflight: false,
+                        preflightCommitment:
+                          'confirmed',
+                      }
+                    );
 
-let confirmed = false;
+                  let confirmed = false;
 
-while (!confirmed) {
-  const status =
-    await connection.getSignatureStatus(
-      signature,
-      {
-        searchTransactionHistory:
-          true,
-      }
-    );
+                  while (!confirmed) {
+                    const status =
+                      await connection.getSignatureStatus(
+                        signature,
+                        {
+                          searchTransactionHistory:
+                            true,
+                        }
+                      );
 
-  if (
-    status.value?.err
-  ) {
-    throw new Error(
-      `Launch transaction failed: ${JSON.stringify(
-        status.value.err
-      )}`
-    );
-  }
+                    if (
+                      status.value?.err
+                    ) {
+                      throw new Error(
+                        `Launch transaction failed: ${JSON.stringify(
+                          status.value.err
+                        )}`
+                      );
+                    }
 
-  if (
-    status.value?.confirmationStatus ===
-      'confirmed' ||
-    status.value?.confirmationStatus ===
-      'finalized'
-  ) {
-    confirmed = true;
-    break;
-  }
+                    if (
+                      status.value?.confirmationStatus ===
+                        'confirmed' ||
+                      status.value?.confirmationStatus ===
+                        'finalized'
+                    ) {
+                      confirmed = true;
+                      break;
+                    }
 
-  const currentBlockHeight =
-    await connection.getBlockHeight(
-      'confirmed'
-    );
+                    const currentBlockHeight =
+                      await connection.getBlockHeight(
+                        'confirmed'
+                      );
 
-  if (
-    currentBlockHeight >
-    lastValidBlockHeight
-  ) {
-    throw new Error(
-      `Signature ${signature} expired: block height exceeded.`
-    );
-  }
+                    if (
+                      currentBlockHeight >
+                      lastValidBlockHeight
+                    ) {
+                      throw new Error(
+                        `Signature ${signature} expired: block height exceeded.`
+                      );
+                    }
 
-  await new Promise(
-    (resolve) =>
-      setTimeout(
-        resolve,
-        750
-      )
-  );
-}
+                    await new Promise(
+                      (resolve) =>
+                        setTimeout(
+                          resolve,
+                          750
+                        )
+                    );
+                  }
 
                   const mint =
                     mintKeypair.publicKey.toString();
