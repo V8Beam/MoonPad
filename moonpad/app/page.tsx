@@ -4187,297 +4187,356 @@ onTrade={
           color: #ffffff;
         }
 
-        @media (max-width: 800px) {
-          body {
-            padding-bottom: 78px;
-          }
+@media (max-width: 800px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
 
-          .shell {
-            min-height: 100vh;
-            display: block !important;
-          }
+  body {
+    padding-bottom: 78px;
+  }
 
-          .sidebar {
-            display: none !important;
-          }
+  .shell {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    display: block !important;
+    overflow-x: hidden;
+  }
 
-          .content {
-            width: 100% !important;
-            max-width: 100% !important;
-            padding: 0 15px 28px !important;
-            overflow-x: hidden;
-          }
+  .sidebar {
+    display: none !important;
+  }
 
-          .topbar {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            display: flex !important;
-            flex-direction: column;
-            align-items: stretch !important;
-            gap: 13px !important;
-            margin: 0 -15px !important;
-            padding:
-              calc(12px + env(safe-area-inset-top))
-              15px
-              12px !important;
-            background: rgba(8, 9, 13, 0.94);
-            backdrop-filter: blur(18px);
-            border-bottom: 1px solid
-              rgba(255, 255, 255, 0.07);
-          }
+  .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 0 15px 28px !important;
+    overflow-x: hidden !important;
+  }
 
-          .topbar h1 {
-            margin-top: 3px !important;
-            font-size: 24px !important;
-            line-height: 1.12 !important;
-          }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 13px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 -15px !important;
+    padding:
+      calc(12px + env(safe-area-inset-top))
+      15px
+      12px !important;
+    background: rgba(8, 9, 13, 0.94);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid
+      rgba(255, 255, 255, 0.07);
+  }
 
-          .top-actions {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 9px !important;
-            width: 100%;
-          }
+  .topbar h1 {
+    margin-top: 3px !important;
+    font-size: 24px !important;
+    line-height: 1.12 !important;
+  }
 
-          .search {
-            width: 100% !important;
-            min-height: 44px;
-          }
+  .top-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+    width: 100%;
+    min-width: 0;
+  }
 
-          .wallet {
-            width: 100% !important;
-            min-height: 46px;
-            justify-content: center;
-          }
+  .search {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
 
-          .hero {
-            display: flex !important;
-            flex-direction: column;
-            min-height: auto !important;
-            gap: 28px !important;
-            padding: 28px 0 22px !important;
-          }
+  .wallet {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 46px;
+    justify-content: center;
+    box-sizing: border-box;
+  }
 
-          .hero h2 {
-            font-size: clamp(48px, 15vw, 76px) !important;
-            line-height: 0.9 !important;
-          }
+  .hero {
+    display: flex !important;
+    flex-direction: column;
+    min-width: 0 !important;
+    min-height: auto !important;
+    gap: 28px !important;
+    padding: 28px 0 22px !important;
+    overflow: hidden;
+  }
 
-          .hero p {
-            max-width: 100% !important;
-          }
+  .hero h2 {
+    font-size: clamp(48px, 15vw, 76px) !important;
+    line-height: 0.9 !important;
+    max-width: 100%;
+  }
 
-          .orb {
-            width: 180px !important;
-            height: 180px !important;
-            margin: 0 auto !important;
-          }
+  .hero p {
+    max-width: 100% !important;
+  }
 
-          .hero-actions {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            width: 100%;
-          }
+  .orb {
+    width: 180px !important;
+    height: 180px !important;
+    max-width: 100%;
+    margin: 0 auto !important;
+  }
 
-          .hero-actions button {
-            width: 100%;
-            min-height: 48px;
-            justify-content: center;
-          }
+  .hero-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100%;
+    min-width: 0;
+  }
 
-          .toolbar {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 9px !important;
-          }
+  .hero-actions button {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+    box-sizing: border-box;
+  }
 
-          .stat {
-            min-width: 0 !important;
-            overflow: hidden;
-          }
+  .toolbar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 9px !important;
+    min-width: 0;
+  }
 
-          .stat b {
-            display: block;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 14px !important;
-          }
+  .stat {
+    min-width: 0 !important;
+    overflow: hidden;
+  }
 
-          .section {
-            margin-top: 24px !important;
-          }
+  .stat b {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px !important;
+  }
 
-          .section-head {
-            align-items: flex-start !important;
-            gap: 10px;
-          }
+  .section {
+    width: 100%;
+    min-width: 0;
+    margin-top: 24px !important;
+    overflow: hidden;
+  }
 
-          .section-head h3 {
-            font-size: 20px !important;
-          }
+  .section-head {
+    align-items: flex-start !important;
+    gap: 10px;
+    min-width: 0;
+  }
 
-          .token-grid,
-          .agent-grid,
-          .settings-grid {
-            grid-template-columns: 1fr !important;
-          }
+  .section-head h3 {
+    font-size: 20px !important;
+  }
 
-          .token-list {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-          }
+  .token-grid,
+  .agent-grid,
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
 
-          .token-card,
-          .token-card.large {
-            width: 100% !important;
-            min-width: 0 !important;
-          }
+  .token-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
 
-          .token-actions {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-          }
+  .token-card,
+  .token-card.large {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
 
-          .token-actions .ghost {
-            min-height: 42px;
-            justify-content: center;
-          }
+  .token-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    min-width: 0;
+  }
 
-          .bot-panel {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 20px !important;
-            padding: 20px !important;
-          }
+  .token-actions .ghost {
+    min-height: 42px;
+    justify-content: center;
+    min-width: 0;
+  }
 
-          .trade-controls {
-            width: 100% !important;
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-          }
+  .bot-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 20px !important;
+    overflow: hidden;
+  }
 
-          .trade-controls input,
-          .trade-controls button {
-            width: 100% !important;
-            min-height: 48px !important;
-          }
+  .trade-controls {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
 
-          .trade-controls a {
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
+  .trade-controls input,
+  .trade-controls button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    box-sizing: border-box;
+  }
 
-          .agent-card {
-            width: 100% !important;
-            min-width: 0 !important;
-          }
+  .trade-controls a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
 
-          .activity {
-            overflow-x: auto;
-          }
+  .agent-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
 
-          .event {
-            min-width: 520px;
-          }
+  .activity {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
 
-          .page-shell {
-            padding-top: 24px !important;
-          }
+  .event {
+    min-width: 520px;
+  }
 
-          .page-intro h2 {
-            font-size: 38px !important;
-          }
+  .page-shell {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-top: 24px !important;
+    box-sizing: border-box;
+  }
 
-          .modal-backdrop {
-            align-items: flex-end !important;
-            padding: 0 !important;
-          }
+  .page-intro h2 {
+    font-size: 38px !important;
+  }
 
-          .modal {
-            width: 100% !important;
-            max-width: none !important;
-            max-height: 92vh !important;
-            overflow-y: auto !important;
-            border-radius: 24px 24px 0 0 !important;
-            padding:
-              22px 18px
-              calc(22px + env(safe-area-inset-bottom))
-              !important;
-          }
+  .modal-backdrop {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
 
-          .modal-row {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-          }
+  .modal {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    box-sizing: border-box;
+    border-radius: 24px 24px 0 0 !important;
+    padding:
+      22px 18px
+      calc(22px + env(safe-area-inset-bottom))
+      !important;
+  }
 
-          .modal-row button,
-          .modal-row a {
-            width: 100% !important;
-            min-height: 48px;
-            justify-content: center;
-          }
+  .modal-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    min-width: 0;
+  }
 
-          .mobile-nav {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 100;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            padding:
-              8px
-              8px
-              calc(8px + env(safe-area-inset-bottom));
-            background: rgba(12, 13, 18, 0.96);
-            backdrop-filter: blur(18px);
-            border-top: 1px solid
-              rgba(255, 255, 255, 0.09);
-          }
+  .modal-row button,
+  .modal-row a {
+    width: 100% !important;
+    min-height: 48px;
+    justify-content: center;
+    box-sizing: border-box;
+  }
 
-          .mobile-nav-item {
-            min-width: 0;
-            min-height: 54px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            border: 0;
-            border-radius: 13px;
-            background: transparent;
-            color: rgba(255, 255, 255, 0.48);
-          }
+  .mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    box-sizing: border-box;
+    padding:
+      8px
+      8px
+      calc(8px + env(safe-area-inset-bottom));
+    background: rgba(12, 13, 18, 0.96);
+    backdrop-filter: blur(18px);
+    border-top: 1px solid
+      rgba(255, 255, 255, 0.09);
+  }
 
-          .mobile-nav-item span {
-            font-size: 10px;
-            font-weight: 700;
-          }
+  .mobile-nav-item {
+    min-width: 0;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.48);
+  }
 
-          .mobile-nav-item.active {
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.07);
-          }
+  .mobile-nav-item span {
+    font-size: 10px;
+    font-weight: 700;
+  }
 
-          .toast {
-            left: 15px !important;
-            right: 15px !important;
-            bottom:
-              calc(86px + env(safe-area-inset-bottom))
-              !important;
-            width: auto !important;
-            justify-content: center;
-            text-align: center;
-          }
+  .mobile-nav-item.active {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.07);
+  }
 
-          footer {
-            padding-bottom: 18px !important;
-          }
-        }
+  .toast {
+    left: 15px !important;
+    right: 15px !important;
+    bottom:
+      calc(86px + env(safe-area-inset-bottom))
+      !important;
+    width: auto !important;
+    max-width: calc(100% - 30px) !important;
+    box-sizing: border-box;
+    justify-content: center;
+    text-align: center;
+  }
+
+  footer {
+    padding-bottom: 18px !important;
+  }
+}
 
         @media (max-width: 420px) {
           .content {
