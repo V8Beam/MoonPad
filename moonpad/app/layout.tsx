@@ -2,8 +2,8 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'MoonPad — AI Token Platform',
-  description: 'MoonPad dashboard prototype for token launches, monitoring, and AI agents.'
+title: 'MoonPad — Solana Token Launch & Trading',
+description: 'MoonPad — a Solana token launch and trading platform.'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
