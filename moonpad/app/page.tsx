@@ -2515,45 +2515,33 @@ const selectToken = async (
     </p>
   </div>
 
-                <div className="trade-controls">
-                  <input
-                    value={
-                      tradeMint
-                    }
-                    onChange={(e) =>
-                      setTradeMint(
-                        e.target.value
-                      )
-                    }
-                    placeholder="Token mint address"
-                  />
+  <div className="trade-controls">
+    <div>
+      <span className="eyebrow">
+        CURRENT PRICE
+      </span>
 
-                  <button
-                    onClick={
-                      refreshWatchPrice
-                    }
-                    disabled={
-                      loadingPrice
-                    }
-                  >
-                    {loadingPrice
-                      ? 'Reading...'
-                      : 'Check Price'}
-                  </button>
+      <strong>
+        {watchPrice !== null
+          ? `$${formatPrice(watchPrice)}`
+          : '—'}
+      </strong>
+    </div>
 
-                  {watching &&
-                    watchPrice !==
-                      null && (
-                      <span>
-                        Current price: $
-                        {formatPrice(
-                          watchPrice
-                        )}
-                      </span>
-                    )}
-                </div>
-              </div>
-            </section>
+    <button
+      onClick={refreshWatchPrice}
+      disabled={
+        loadingPrice ||
+        !tradeMint.trim()
+      }
+    >
+      {loadingPrice
+        ? 'Refreshing...'
+        : 'Refresh Price'}
+    </button>
+  </div>
+</div>
+</section>
 
             <section className="section">
               <div className="section-head">
