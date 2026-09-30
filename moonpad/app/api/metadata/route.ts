@@ -28,9 +28,39 @@ export async function POST(request: Request) {
       );
     }
 
-    const imageResponse =
-      await fetch(image);
+let imageUrl: URL;
 
+try {
+  imageUrl = new URL(String(image));
+} catch {
+  return NextResponse.json(
+    {
+      error:
+        'Token image must be a valid URL.',
+    },
+    {
+      status: 400,
+    }
+  );
+}
+
+if (
+  imageUrl.protocol !== 'https:' &&
+  imageUrl.protocol !== 'http:'
+) {
+  return NextResponse.json(
+    {
+      error:
+        'Token image must use HTTP or HTTPS.',
+    },
+    {
+      status: 400,
+    }
+  );
+}
+
+const imageResponse =
+  await fetch(imageUrl.toString());
     if (!imageResponse.ok) {
       return NextResponse.json(
         {
