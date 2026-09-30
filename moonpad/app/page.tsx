@@ -2499,23 +2499,21 @@ const selectToken = async (
                 </div>
               </div>
 
-              <div className="bot-panel">
-                <div>
-                  <span className="eyebrow">
-                    LIVE PRICE
-                  </span>
+<div className="bot-panel">
+  <div>
+    <span className="eyebrow">
+      LIVE PRICE
+    </span>
 
-                  <h3>
-                    Token monitor
-                  </h3>
+    <h3>
+      {tokenLabel} Market Data
+    </h3>
 
-                  <p>
-                    Enter any Solana
-                    token mint to read
-                    its current Jupiter
-                    price.
-                  </p>
-                </div>
+    <p>
+      Live Jupiter pricing for the
+      selected Solana token.
+    </p>
+  </div>
 
                 <div className="trade-controls">
                   <input
