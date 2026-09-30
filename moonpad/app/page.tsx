@@ -2952,10 +2952,10 @@ const selectToken = async (
                     <span>
                       24h:{' '}
                       <b>
-                        {selectedToken.change >=
-                        0
-                          ? '+'
-                          : ''}
+{Number(selectedToken.change) >=
+  0
+    ? '+'
+    : ''}
                         {selectedToken.change}%
                       </b>
                     </span>
