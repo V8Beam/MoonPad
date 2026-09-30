@@ -217,30 +217,77 @@ export default function Home() {
       },
     ]);
 
-  const allTokens = useMemo(
-    () => [...createdTokens, ...demoTokens],
-    [createdTokens]
+const [discoveredTokens, setDiscoveredTokens] =
+  useState<TokenItem[]>([]);
+
+useEffect(() => {
+  let cancelled = false;
+
+  const loadDiscoveredTokens = async () => {
+    try {
+      const response = await fetch(
+        '/api/discover',
+        {
+          cache: 'no-store',
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+
+      if (
+        !cancelled &&
+        Array.isArray(data.tokens)
+      ) {
+        setDiscoveredTokens(
+          data.tokens as TokenItem[]
+        );
+      }
+    } catch {}
+  };
+
+  loadDiscoveredTokens();
+
+  const interval = window.setInterval(
+    loadDiscoveredTokens,
+    30_000
   );
 
-  const filteredTokens = useMemo(
-    () =>
-      allTokens.filter((t) =>
-        `${t.name} ${t.ticker} ${t.mint || ''}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      ),
-    [allTokens, search]
-  );
+  return () => {
+    cancelled = true;
+    window.clearInterval(interval);
+  };
+}, []);
 
-  const selectedToken = useMemo(
-    () =>
-      allTokens.find(
-        (token) =>
-          token.mint === tradeMint.trim()
-      ),
-    [allTokens, tradeMint]
-  );
+const allTokens = useMemo(
+  () => [
+    ...createdTokens,
+    ...discoveredTokens,
+  ],
+  [createdTokens, discoveredTokens]
+);
 
+const filteredTokens = useMemo(
+  () =>
+    allTokens.filter((t) =>
+      `${t.name} ${t.ticker} ${t.mint || ''}`
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    ),
+  [allTokens, search]
+);
+
+const selectedToken = useMemo(
+  () =>
+    allTokens.find(
+      (token) =>
+        token.mint === tradeMint.trim()
+    ),
+  [allTokens, tradeMint]
+);
   const tokenLabel =
     selectedToken?.ticker || 'TOKEN';
 
