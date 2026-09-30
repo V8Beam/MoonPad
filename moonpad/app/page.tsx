@@ -722,7 +722,38 @@ const selectedToken = useMemo(
     walletAddress,
     tradeMint,
   ]);
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
 
+    const token =
+      params.get('token');
+
+    if (!token) {
+      return;
+    }
+
+    setTradeMint(token);
+    setActive('AI Agents');
+
+    setTokenBalanceRefreshKey(
+      (value) => value + 1
+    );
+
+    getPrice(token)
+      .then((price) => {
+        setCurrentPrice(price);
+        setWatchPrice(price);
+        setWatching(true);
+      })
+      .catch(() => {
+        notify(
+          'Token loaded — price unavailable'
+        );
+      });
+  }, []);
   useEffect(() => {
     if (
       !connected ||
