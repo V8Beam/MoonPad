@@ -77,7 +77,32 @@ type TradeRecord = {
   status: 'CONFIRMED';
 };
 
-
+const demoTokens: TokenItem[] = [
+  {
+    name: 'Moon',
+    ticker: '$MOON',
+    mc: '$12.4K',
+    change: '+18.4%',
+    holders: '2,481',
+    status: 'LIVE',
+  },
+  {
+    name: 'Lunar Doge',
+    ticker: '$LDOGE',
+    mc: '$4.8K',
+    change: '+7.2%',
+    holders: '812',
+    status: 'LIVE',
+  },
+  {
+    name: 'MoonCat',
+    ticker: '$MCAT',
+    mc: '$2.1K',
+    change: '+3.9%',
+    holders: '391',
+    status: 'WATCH',
+  },
+];
 
 export default function Home() {
   const connection = useMemo(
