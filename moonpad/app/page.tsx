@@ -2017,20 +2017,28 @@ const selectedToken = useMemo(
     );
   };
 
-  const selectToken = (
-    mint: string
-  ) => {
-    setTradeMint(mint);
-    setActive('AI Agents');
+const selectToken = async (
+  mint: string
+) => {
+  setTradeMint(mint);
+  setActive('AI Agents');
 
-    setTokenBalanceRefreshKey(
-      (value) => value + 1
-    );
+  setTokenBalanceRefreshKey(
+    (value) => value + 1
+  );
 
-    notify(
-      'Token loaded into trading'
-    );
-  };
+  try {
+    const price = await getPrice(mint);
+
+    setCurrentPrice(price);
+    setWatchPrice(price);
+    setWatching(true);
+  } catch {}
+
+  notify(
+    'Token loaded into trading'
+  );
+};
 
   const positionOpen =
     Boolean(
