@@ -11,6 +11,7 @@ import {
 } from '@solana/web3.js';
 
 import { PUMP_SDK } from '@pump-fun/pump-sdk';
+
 import {
   Activity,
   Bot,
@@ -63,6 +64,17 @@ type TokenBalance = {
   rawAmount: string;
   humanAmount: string;
   decimals: number;
+};
+
+type TradeRecord = {
+  id: string;
+  action: 'BUY' | 'SELL';
+  mint: string;
+  amount: string;
+  signature: string;
+  price: number | null;
+  time: string;
+  status: 'CONFIRMED';
 };
 
 const demoTokens: TokenItem[] = [
@@ -178,6 +190,9 @@ export default function Home() {
   const [createdTokens, setCreatedTokens] =
     useState<TokenItem[]>([]);
 
+  const [tradeHistory, setTradeHistory] =
+    useState<TradeRecord[]>([]);
+
   const [activity, setActivity] =
     useState<ActivityEvent[]>([
       {
@@ -261,6 +276,30 @@ export default function Home() {
       try {
         localStorage.setItem(
           'moonpad_activity',
+          JSON.stringify(next)
+        );
+      } catch {}
+
+      return next;
+    });
+  };
+
+  const addTradeHistory = (
+    record: TradeRecord
+  ) => {
+    setTradeHistory((previous) => {
+      const next = [
+        record,
+        ...previous.filter(
+          (item) =>
+            item.signature !==
+            record.signature
+        ),
+      ].slice(0, 50);
+
+      try {
+        localStorage.setItem(
+          'moonpad_trade_history',
           JSON.stringify(next)
         );
       } catch {}
@@ -535,6 +574,20 @@ export default function Home() {
           setActivity(parsed);
         }
       }
+
+      const savedTrades =
+        localStorage.getItem(
+          'moonpad_trade_history'
+        );
+
+      if (savedTrades) {
+        const parsed =
+          JSON.parse(savedTrades);
+
+        if (Array.isArray(parsed)) {
+          setTradeHistory(parsed);
+        }
+      }
     } catch {}
   }, []);
 
@@ -571,6 +624,7 @@ export default function Home() {
         setConnected(true);
         setWalletAddress(address);
         refreshBalance(address);
+
         setTokenBalanceRefreshKey(
           (value) => value + 1
         );
@@ -1075,6 +1129,52 @@ export default function Home() {
 
       setLastSignature(signature);
 
+      let executedPrice: number | null =
+        null;
+
+      try {
+        executedPrice =
+          await getPrice(
+            action === 'Buy'
+              ? outputMint
+              : inputMint
+          );
+      } catch {}
+
+      const recordAmount =
+        action === 'Buy'
+          ? (
+              Number(amount) /
+              1_000_000_000
+            ).toString()
+          : tokenBalance
+          ? fromTokenBaseUnits(
+              amount,
+              tokenBalance.decimals
+            )
+          : amount;
+
+      addTradeHistory({
+        id:
+          `${signature}-${Date.now()}`,
+        action:
+          action.toUpperCase() as
+            | 'BUY'
+            | 'SELL',
+        mint:
+          action === 'Buy'
+            ? outputMint
+            : inputMint,
+        amount:
+          recordAmount,
+        signature,
+        price:
+          executedPrice,
+        time:
+          new Date().toISOString(),
+        status: 'CONFIRMED',
+      });
+
       setTradeStatus(
         `${action} confirmed: ${signature.slice(
           0,
@@ -1202,12 +1302,15 @@ export default function Home() {
       } catch {}
 
       setTradeMint(mint);
+
       setEntryPrice(
         entryAfterBuy
       );
+
       setCurrentPrice(
         entryAfterBuy
       );
+
       setChangePercent(0);
       setTriggered(null);
 
@@ -1459,14 +1562,17 @@ export default function Home() {
         await getPrice(mint);
 
       setTradeMint(mint);
+
       setEntryPrice(
         entryAfterBuy ||
           entryBeforeBuy
       );
+
       setCurrentPrice(
         entryAfterBuy ||
           entryBeforeBuy
       );
+
       setChangePercent(0);
       setTriggered(null);
 
@@ -1593,6 +1699,13 @@ export default function Home() {
 
                 setTradeStatus(
                   `${trigger} triggered — preparing automatic sell...`
+                );
+
+                addActivity(
+                  'Trading Assistant',
+                  `${trigger.toLowerCase()} condition detected at ${
+                    percent >= 0 ? '+' : ''
+                  }${percent.toFixed(2)}%`
                 );
 
                 const provider =
@@ -1922,42 +2035,38 @@ export default function Home() {
         positionTokenAmount
       : null;
 
-  const positionCostUsd =
+  const positionPnlUsd =
     positionOpen &&
     entryPrice !== null &&
+    currentPrice !== null &&
     positionTokenAmount !== null &&
     Number.isFinite(
       positionTokenAmount
     )
-      ? entryPrice *
+      ? (currentPrice -
+          entryPrice) *
         positionTokenAmount
       : null;
 
-  const positionPnlUsd =
-    positionOpen &&
-    positionCostUsd !== null &&
-    positionValueUsd !== null
-      ? positionValueUsd -
-        positionCostUsd
-      : null;
-
   const positionPnlPercent =
-    positionCostUsd !== null &&
-    positionCostUsd > 0 &&
-    positionPnlUsd !== null
-      ? (positionPnlUsd /
-          positionCostUsd) *
+    entryPrice !== null &&
+    currentPrice !== null &&
+    entryPrice > 0
+      ? ((currentPrice -
+          entryPrice) /
+          entryPrice) *
         100
       : null;
 
-  const positionDirection =
-    positionPnlUsd === null
-      ? 'WAITING'
-      : positionPnlUsd > 0
-      ? 'PROFIT'
-      : positionPnlUsd < 0
-      ? 'LOSS'
-      : 'FLAT';
+  const recentTradeHistory =
+    tradeHistory
+      .filter(
+        (trade) =>
+          !tradeMint.trim() ||
+          trade.mint ===
+            tradeMint.trim()
+      )
+      .slice(0, 10);
 
   const nav = [
     [
@@ -2525,6 +2634,16 @@ export default function Home() {
                   Solana Mainnet
                 </b>
               </div>
+
+              <div className="stat">
+                <small>
+                  Trades
+                </small>
+
+                <b>
+                  {tradeHistory.length}
+                </b>
+              </div>
             </div>
 
             {createdTokens.length >
@@ -2648,6 +2767,96 @@ export default function Home() {
                 </a>
               </div>
             )}
+
+            <div className="bot-panel">
+              <div>
+                <span className="eyebrow">
+                  TRADE HISTORY
+                </span>
+
+                <h3>
+                  Recent buys &amp; sells
+                </h3>
+
+                <p>
+                  Confirmed MoonPad
+                  transactions saved
+                  locally in this browser.
+                </p>
+              </div>
+
+              <div className="activity-list">
+                {tradeHistory
+                  .slice(0, 10)
+                  .map(
+                    (
+                      trade
+                    ) => (
+                      <div
+                        className="activity-row"
+                        key={
+                          trade.id
+                        }
+                      >
+                        <div>
+                          <b
+                            className={
+                              trade.action ===
+                              'BUY'
+                                ? 'up'
+                                : ''
+                            }
+                          >
+                            {trade.action}
+                          </b>
+
+                          <span>
+                            {formatTokenBalance(
+                              trade.amount
+                            )}{' '}
+                            {trade.action ===
+                            'BUY'
+                              ? 'SOL'
+                              : 'TOKEN'}
+                            {' · '}
+                            {trade.mint.slice(
+                              0,
+                              8
+                            )}
+                            ...
+                          </span>
+                        </div>
+
+                        <div className="activity-right">
+                          <small>
+                            {formatHistoryTime(
+                              trade.time
+                            )}
+                          </small>
+
+                          <a
+                            href={`https://solscan.io/tx/${trade.signature}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <ExternalLink
+                              size={13}
+                            />
+                          </a>
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                {tradeHistory.length ===
+                  0 && (
+                  <span>
+                    No confirmed trades
+                    recorded yet.
+                  </span>
+                )}
+              </div>
+            </div>
           </PageShell>
         )}
 
@@ -2897,40 +3106,23 @@ export default function Home() {
                 </h3>
 
                 <p>
-                  Live position tracking
-                  updates the token price every
-                  five seconds while a position is
-                  open.
+                  MoonPad refreshes the
+                  position price every five
+                  seconds while a token balance
+                  is open.
                 </p>
               </div>
 
               <div className="token-stats">
                 <div>
                   <small>
-                    Position
+                    Status
                   </small>
 
                   <strong>
                     {positionOpen
                       ? 'OPEN'
                       : 'CLOSED'}
-                  </strong>
-                </div>
-
-                <div>
-                  <small>
-                    Direction
-                  </small>
-
-                  <strong
-                    className={
-                      positionDirection ===
-                      'PROFIT'
-                        ? 'up'
-                        : ''
-                    }
-                  >
-                    {positionDirection}
                   </strong>
                 </div>
 
@@ -2946,6 +3138,21 @@ export default function Home() {
                           tokenBalance.humanAmount
                         )
                       : '0'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Position value
+                  </small>
+
+                  <strong>
+                    {positionValueUsd !==
+                    null
+                      ? `$${formatUsd(
+                          positionValueUsd
+                        )}`
+                      : '—'}
                   </strong>
                 </div>
 
@@ -2981,37 +3188,7 @@ export default function Home() {
 
                 <div>
                   <small>
-                    Invested value
-                  </small>
-
-                  <strong>
-                    {positionCostUsd !==
-                    null
-                      ? `$${formatUsd(
-                          positionCostUsd
-                        )}`
-                      : '—'}
-                  </strong>
-                </div>
-
-                <div>
-                  <small>
-                    Current value
-                  </small>
-
-                  <strong>
-                    {positionValueUsd !==
-                    null
-                      ? `$${formatUsd(
-                          positionValueUsd
-                        )}`
-                      : '—'}
-                  </strong>
-                </div>
-
-                <div>
-                  <small>
-                    Unrealized P&amp;L
+                    P&amp;L
                   </small>
 
                   <strong
@@ -3037,7 +3214,7 @@ export default function Home() {
 
                 <div>
                   <small>
-                    ROI
+                    P&amp;L %
                   </small>
 
                   <strong
@@ -3061,12 +3238,11 @@ export default function Home() {
               </div>
 
               <span>
-                This is an unrealized estimate from
-                the tracked entry/current price and
-                current token balance. Actual realized
-                P&amp;L will later account for execution
-                price, fees, slippage, and partial
-                sells.
+                P&amp;L is an unrealized estimate
+                based on the token's current
+                balance and price. Network fees,
+                slippage, and partial sells are
+                not included yet.
               </span>
             </div>
 
@@ -3232,55 +3408,156 @@ export default function Home() {
                 </h3>
 
                 <p>
-                  Recent MoonPad trades and
-                  assistant events for this
-                  workspace.
+                  Confirmed buys, sells,
+                  assistant events, and
+                  on-chain transaction links.
                 </p>
               </div>
 
               <div className="activity-list">
-                {activity
-                  .filter(
-                    (item) =>
-                      item.actor ===
-                        'Trade' ||
-                      item.actor ===
-                        'Trading Assistant'
-                  )
-                  .slice(0, 8)
-                  .map((item, index) => (
+                {recentTradeHistory.map(
+                  (trade) => (
                     <div
                       className="activity-row"
-                      key={`${item.time}-${item.actor}-${index}`}
+                      key={trade.id}
                     >
                       <div>
                         <b>
-                          {item.actor}
+                          {trade.action}
                         </b>
 
                         <span>
-                          {item.action}
+                          {formatTokenBalance(
+                            trade.amount
+                          )}{' '}
+                          {trade.action ===
+                          'BUY'
+                            ? 'SOL'
+                            : tokenLabel}
+                          {' · '}
+                          {trade.price !==
+                          null
+                            ? `$${formatPrice(
+                                trade.price
+                              )}`
+                            : 'price unavailable'}
                         </span>
                       </div>
 
-                      <small>
-                        {item.time}
-                      </small>
-                    </div>
-                  ))}
+                      <div className="activity-right">
+                        <small>
+                          {formatHistoryTime(
+                            trade.time
+                          )}
+                        </small>
 
-                {activity.filter(
-                  (item) =>
-                    item.actor ===
-                      'Trade' ||
-                    item.actor ===
-                      'Trading Assistant'
-                ).length === 0 && (
+                        <a
+                          href={`https://solscan.io/tx/${trade.signature}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink
+                            size={13}
+                          />
+                        </a>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {recentTradeHistory.length ===
+                  0 && (
                   <span>
-                    No position activity yet.
+                    No confirmed trades for
+                    this token yet.
                   </span>
                 )}
               </div>
+            </div>
+
+            <div className="bot-panel">
+              <div>
+                <span className="eyebrow">
+                  MARKET INTELLIGENCE
+                </span>
+
+                <h3>
+                  Holder activity
+                </h3>
+
+                <p>
+                  MoonPad can monitor the
+                  token's on-chain holder
+                  distribution here. The next
+                  intelligence layer will turn
+                  holder changes into whale
+                  activity alerts.
+                </p>
+              </div>
+
+              <div className="token-stats">
+                <div>
+                  <small>
+                    Token
+                  </small>
+
+                  <strong>
+                    {tradeMint
+                      ? `${tradeMint.slice(
+                          0,
+                          6
+                        )}...${tradeMint.slice(
+                          -6
+                        )}`
+                      : '—'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Position
+                  </small>
+
+                  <strong>
+                    {positionOpen
+                      ? 'OPEN'
+                      : 'CLOSED'}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Confirmed trades
+                  </small>
+
+                  <strong>
+                    {tradeHistory.filter(
+                      (trade) =>
+                        trade.mint ===
+                        tradeMint.trim()
+                    ).length}
+                  </strong>
+                </div>
+
+                <div>
+                  <small>
+                    Monitoring
+                  </small>
+
+                  <strong>
+                    {botEnabled
+                      ? 'ACTIVE'
+                      : 'PAUSED'}
+                  </strong>
+                </div>
+              </div>
+
+              <span>
+                Whale alerts will only be
+                generated from verified on-chain
+                holder/transaction data. MoonPad
+                will not invent whale activity.
+              </span>
             </div>
           </PageShell>
         )}
@@ -3294,6 +3571,83 @@ export default function Home() {
             <ActivityLog
               events={activity}
             />
+
+            <div className="bot-panel">
+              <div>
+                <span className="eyebrow">
+                  CONFIRMED TRADES
+                </span>
+
+                <h3>
+                  Buy &amp; sell history
+                </h3>
+
+                <p>
+                  Every confirmed MoonPad
+                  trade is stored here with
+                  its Solana transaction.
+                </p>
+              </div>
+
+              <div className="activity-list">
+                {tradeHistory.map(
+                  (trade) => (
+                    <div
+                      className="activity-row"
+                      key={trade.id}
+                    >
+                      <div>
+                        <b>
+                          {trade.action}
+                        </b>
+
+                        <span>
+                          {formatTokenBalance(
+                            trade.amount
+                          )}{' '}
+                          {trade.action ===
+                          'BUY'
+                            ? 'SOL'
+                            : 'TOKEN'}
+                          {' · '}
+                          {trade.mint.slice(
+                            0,
+                            8
+                          )}
+                          ...
+                        </span>
+                      </div>
+
+                      <div className="activity-right">
+                        <small>
+                          {formatHistoryTime(
+                            trade.time
+                          )}
+                        </small>
+
+                        <a
+                          href={`https://solscan.io/tx/${trade.signature}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink
+                            size={13}
+                          />
+                        </a>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {tradeHistory.length ===
+                  0 && (
+                  <span>
+                    No confirmed trades
+                    yet.
+                  </span>
+                )}
+              </div>
+            </div>
           </PageShell>
         )}
 
@@ -3368,6 +3722,24 @@ export default function Home() {
                   <span>
                     Jupiter market
                     pricing
+                  </span>
+                </div>
+              </div>
+
+              <div className="setting">
+                <CircleDollarSign
+                  size={18}
+                />
+
+                <div>
+                  <b>
+                    Trade history
+                  </b>
+
+                  <span>
+                    {tradeHistory.length}{' '}
+                    confirmed trades
+                    stored locally
                   </span>
                 </div>
               </div>
@@ -3735,6 +4107,25 @@ export default function Home() {
 
         .mobile-cancel {
           margin-top: 10px;
+        }
+
+        .activity-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+
+        .activity-right a {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255, 255, 255, 0.58);
+          text-decoration: none;
+        }
+
+        .activity-right a:hover {
+          color: #ffffff;
         }
 
         @media (max-width: 800px) {
@@ -4133,6 +4524,26 @@ function formatTokenBalance(
         number >= 1000 ? 4 : 9,
     }
   );
+}
+
+function formatHistoryTime(
+  value: string
+) {
+  try {
+    return new Date(
+      value
+    ).toLocaleString(
+      undefined,
+      {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }
+    );
+  } catch {
+    return value;
+  }
 }
 
 function TokenCard({
@@ -4970,9 +5381,12 @@ function LaunchModal({
                       }
                     );
 
-                  let confirmed = false;
+                  let confirmed =
+                    false;
 
-                  while (!confirmed) {
+                  while (
+                    !confirmed
+                  ) {
                     const status =
                       await connection.getSignatureStatus(
                         signature,
@@ -4998,7 +5412,8 @@ function LaunchModal({
                       status.value?.confirmationStatus ===
                         'finalized'
                     ) {
-                      confirmed = true;
+                      confirmed =
+                        true;
                       break;
                     }
 
