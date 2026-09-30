@@ -2472,14 +2472,15 @@ const selectToken = async (
                               )
                           : undefined
                       }
-                      onTrade={
-                        t.mint
-                          ? () =>
-                              selectToken(
-                                t.mint!
-                              )
-                          : undefined
-                      }
+onTrade={
+  t.mint
+    ? () =>
+        (window.location.href =
+          `/token/${encodeURIComponent(
+            t.mint!
+          )}`)
+    : undefined
+}
                     />
                   ))}
               </div>
