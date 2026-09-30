@@ -2913,29 +2913,59 @@ const selectToken = async (
               />
             </div>
 
+```tsx
             <div className="bot-panel">
               <div>
                 <span className="eyebrow">
-                  MANUAL TRADING
+                  TOKEN TRADING
                 </span>
 
                 <h3>
-                  Trade with Phantom
+                  {selectedToken?.name ||
+                    `${tokenLabel} Trading`}
                 </h3>
 
                 <p>
-                  Every transaction
-                  requires Phantom
-                  approval before it
-                  reaches Solana.
+                  Trade {tokenLabel} directly
+                  through Phantom. Every
+                  transaction requires wallet
+                  approval before it reaches
+                  Solana.
                 </p>
               </div>
 
+              {selectedToken && (
+                <div className="trade-controls">
+                  <span>
+                    <b>
+                      {selectedToken.ticker ||
+                        tokenLabel}
+                    </b>
+                    {' · '}
+                    {selectedToken.mc
+                      ? `MC $${selectedToken.mc}`
+                      : 'Market data live'}
+                  </span>
+
+                  {selectedToken.change !==
+                    undefined && (
+                    <span>
+                      24h:{' '}
+                      <b>
+                        {selectedToken.change >=
+                        0
+                          ? '+'
+                          : ''}
+                        {selectedToken.change}%
+                      </b>
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="trade-controls">
                 <input
-                  value={
-                    tradeMint
-                  }
+                  value={tradeMint}
                   onChange={(e) =>
                     setTradeMint(
                       e.target.value
@@ -2984,8 +3014,7 @@ const selectToken = async (
                     : 'Refresh Token Balance'}
                 </button>
 
-                {tokenBalance !==
-                  null && (
+                {tokenBalance !== null && (
                   <span>
                     Available:{' '}
                     <b>
@@ -2994,9 +3023,6 @@ const selectToken = async (
                       )}{' '}
                       {tokenLabel}
                     </b>
-                    {' · '}
-                    {tokenBalance.decimals}{' '}
-                    decimals
                   </span>
                 )}
 
@@ -3004,16 +3030,13 @@ const selectToken = async (
                   tradeMint.trim() &&
                   !loadingTokenBalance && (
                     <span>
-                      No token balance
-                      detected for this
-                      wallet.
+                      No {tokenLabel} balance
+                      detected in this wallet.
                     </span>
-                )}
+                  )}
 
                 <input
-                  value={
-                    tradeAmount
-                  }
+                  value={tradeAmount}
                   onChange={(e) =>
                     setTradeAmount(
                       e.target.value
@@ -3027,22 +3050,16 @@ const selectToken = async (
                 />
 
                 <button
-                  onClick={
-                    handleBuy
-                  }
-                  disabled={
-                    tradeLoading
-                  }
+                  onClick={handleBuy}
+                  disabled={tradeLoading}
                 >
                   {tradeLoading
                     ? 'Processing...'
-                    : 'Buy'}
+                    : `Buy ${tokenLabel}`}
                 </button>
 
                 <input
-                  value={
-                    sellAmount
-                  }
+                  value={sellAmount}
                   onChange={(e) =>
                     setSellAmount(
                       e.target.value
@@ -3057,9 +3074,7 @@ const selectToken = async (
 
                 <button
                   className="secondary"
-                  onClick={
-                    fillMaxSell
-                  }
+                  onClick={fillMaxSell}
                   disabled={
                     !tokenBalance ||
                     tokenBalance.rawAmount ===
@@ -3071,23 +3086,17 @@ const selectToken = async (
                 </button>
 
                 <button
-                  onClick={
-                    handleSell
-                  }
-                  disabled={
-                    tradeLoading
-                  }
+                  onClick={handleSell}
+                  disabled={tradeLoading}
                 >
                   {tradeLoading
                     ? 'Processing...'
-                    : 'Sell'}
+                    : `Sell ${tokenLabel}`}
                 </button>
 
                 <span>
-                  Buy amounts use SOL.
-                  Sell amounts use the
-                  token's normal
-                  human-readable amount.
+                  Buy with SOL. Sell using
+                  your token balance.
                 </span>
 
                 {tradeStatus && (
@@ -3110,6 +3119,8 @@ const selectToken = async (
                 )}
               </div>
             </div>
+```
+
 
             <div className="bot-panel">
               <div>
