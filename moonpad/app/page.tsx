@@ -4199,26 +4199,28 @@ onTrade={
     padding-bottom: 78px;
   }
 
-  .shell {
-    width: 100%;
-    max-width: 100%;
-    min-height: 100vh;
-    display: block !important;
-    overflow-x: hidden;
-  }
+.shell {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100vh;
+  margin: 0 !important;
+  display: block !important;
+  overflow-x: hidden;
+}
 
   .sidebar {
     display: none !important;
   }
 
-  .content {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    padding: 0 15px 28px !important;
-    overflow-x: hidden !important;
-  }
+.content {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 15px 28px !important;
+  box-sizing: border-box;
+  overflow-x: hidden !important;
+}
 
   .topbar {
     position: sticky;
